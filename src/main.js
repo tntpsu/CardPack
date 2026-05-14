@@ -3,35 +3,13 @@
 //
 // Phase A: Hearts is the only registered game (reference module). Spades,
 // Euchre, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in Phase B+.
-
-import { Runtime } from 'even-card-platform'
-import type { GlassesGesture } from 'even-card-platform'
-
-import { heartsGame } from './games/hearts'
-
-declare const __APP_VERSION__: string
-
-// ─── Bridge stub ──────────────────────────────────────────────────────
-//
-// Real bridge wiring (textContainerUpgrade, gesture events) lands when
-// the runtime gets exercised against a live simulator. For now main.ts
-// proves the platform import path resolves and the runtime initializes
-// without error.
-
-interface MinimalBridge {
-  setStorage(key: string, value: string): Promise<void>
-  getStorage(key: string): Promise<string | null>
-  render(frame: string): Promise<void>
-  onGesture(handler: (g: GlassesGesture) => void): void
-}
-
-const bridge: MinimalBridge | null = null   // wired in Phase A.7
-
+import { Runtime } from 'even-card-platform';
+import { heartsGame } from './games/hearts';
+const bridge = null; // wired in Phase A.7
 // ─── Phone DOM ────────────────────────────────────────────────────────
-
-const root = document.querySelector<HTMLDivElement>('#app')
-if (!root) throw new Error('App root missing')
-
+const root = document.querySelector('#app');
+if (!root)
+    throw new Error('App root missing');
 root.innerHTML = `
   <main style="font-family: system-ui; padding: 1rem; max-width: 720px; margin: 0 auto; color: #232323; overflow-x: hidden;">
     <h1 style="margin: 0 0 .25rem 0;">Card Pack <span style="font-size: .55em; color: #7b7b7b; font-weight: 400;">v${__APP_VERSION__}</span></h1>
@@ -51,31 +29,24 @@ root.innerHTML = `
       <p style="color:#7b7b7b;font-size:.9em;">Spades, Euchre, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in Phase B+.</p>
     </section>
   </main>
-`
-
-const statusEl = document.querySelector<HTMLParagraphElement>('#status')!
-const glassesMirror = document.querySelector<HTMLPreElement>('#glasses-mirror')!
-
+`;
+const statusEl = document.querySelector('#status');
+const glassesMirror = document.querySelector('#glasses-mirror');
 // ─── Runtime ──────────────────────────────────────────────────────────
-
 const runtime = new Runtime({
-  games: [heartsGame],
-  bridge,
-  packName: 'CARD PACK',
-  difficulty: 'medium',
-  onRender: frame => {
-    // Mirror to the phone for debugging until bridge.render is wired.
-    glassesMirror.textContent = frame
-  },
-})
-
+    games: [heartsGame],
+    bridge,
+    packName: 'CARD PACK',
+    difficulty: 'medium',
+    onRender: frame => {
+        // Mirror to the phone for debugging until bridge.render is wired.
+        glassesMirror.textContent = frame;
+    },
+});
 void (async () => {
-  await runtime.init()
-  statusEl.textContent = bridge
-    ? 'Glasses connected.'
-    : 'Browser preview (no bridge). Phone-side controls coming.'
-})()
-
-// Expose for dev-console poking during Phase A.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(window as any).__cardpack = { runtime, games: [heartsGame] }
+    await runtime.init();
+    statusEl.textContent = bridge
+        ? 'Glasses connected.'
+        : 'Browser preview (no bridge). Phone-side controls coming.';
+})();
+window.__cardpack = { runtime, games: [heartsGame] };
