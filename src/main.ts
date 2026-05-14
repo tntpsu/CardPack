@@ -30,21 +30,19 @@ root.innerHTML = `
     </section>
 
     <section style="margin-top: 1rem;">
-      <h2 style="font-size: 1.1em; margin: 1rem 0 .5rem 0;">Glasses controls</h2>
-      <ul style="line-height: 1.6; color: #555;">
-        <li><strong>Launcher</strong>: swipe up/down to choose a game, tap to launch.</li>
-        <li><strong>Hearts</strong> (in-game): swipe up/down moves the hand cursor, tap plays the card, double-tap continues at end-of-hand / returns to menu at game-end.</li>
-        <li><strong>Swipe down twice</strong> to exit the app from the Even Hub launcher view.</li>
-      </ul>
-    </section>
-
-    <section style="margin-top: 1rem;">
       <button id="new-game" type="button" style="padding:.5rem 1rem;cursor:pointer;max-width:100%;box-sizing:border-box;">New Hearts game</button>
       <button id="end-game" type="button" style="padding:.5rem 1rem;cursor:pointer;margin-left:.5rem;max-width:100%;box-sizing:border-box;">End game (back to menu)</button>
     </section>
 
+    <details id="rules-disclosure" open style="margin-top: 1rem;">
+      <summary style="cursor: pointer; font-weight: 600;">How to play</summary>
+      <div id="rules-body" style="line-height: 1.55; color: #333; padding: .25rem .25rem 0;">
+        <p style="color:#777;">Loading…</p>
+      </div>
+    </details>
+
     <section style="margin-top: 1rem;">
-      <h2 style="font-size: 1.1em; margin: 1rem 0 .5rem 0;">Games</h2>
+      <h2 style="font-size: 1.1em; margin: 1rem 0 .5rem 0;">In the pack</h2>
       <p style="color:#555;">Phase A: Hearts only. Spades, Euchre, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in Phase B+.</p>
     </section>
   </main>
@@ -54,6 +52,7 @@ const statusEl = document.querySelector<HTMLParagraphElement>('#status')!
 const glassesMirror = document.querySelector<HTMLPreElement>('#glasses-mirror')!
 const newGameBtn = document.querySelector<HTMLButtonElement>('#new-game')!
 const endGameBtn = document.querySelector<HTMLButtonElement>('#end-game')!
+const rulesBody = document.querySelector<HTMLDivElement>('#rules-body')!
 
 // ─── Bootstrap ────────────────────────────────────────────────────────
 
@@ -93,8 +92,23 @@ async function bootstrap(): Promise<void> {
       glassesMirror.textContent = frame
       if (even) void even.render(frame)
       emitState()
+      updateRulesPanel()
     },
   })
+
+  /** Refresh the "How to play" disclosure to match the currently-cursored
+   *  (in launcher) or active (in game) module. v0.1.x has only Hearts;
+   *  when Spades/Euchre/etc land in Phase B+, this picks the right one
+   *  based on `runtime.currentGameId()` ?? cursored game.
+   *
+   *  Per-game rules come from each Game module's optional
+   *  renderPhoneRules() — static HTML, lives on Game (not GameHandle). */
+  const REGISTERED_GAMES = [heartsGame]
+  function updateRulesPanel(): void {
+    const activeId = runtime.currentGameId()
+    const game = REGISTERED_GAMES.find(g => g.id === activeId) ?? REGISTERED_GAMES[0]
+    rulesBody.innerHTML = game?.renderPhoneRules?.() ?? '<p>No rules available.</p>'
+  }
 
   await runtime.init()
   statusEl.textContent = even ? 'Glasses connected.' : 'Browser preview — no glasses bridge.'

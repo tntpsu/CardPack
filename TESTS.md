@@ -1,6 +1,6 @@
 # TESTS — coverage matrix
 
-Last updated: 2026-05-14 (v0.1.2 — testing backfill in progress)
+Last updated: 2026-05-14 (v0.1.4 — pacing/linger fix + phone rules)
 
 This is the build gate for Card Pack. Every feature gets a row, every cell
 gets either a test reference, `manual:<reason>`, or `skip:<reason>`. Empty
