@@ -9,7 +9,7 @@
 //
 // Phase A scope: hard-coded target score 50, medium difficulty. Settings UI
 // lands in Phase B when more than one game's settings are visible.
-import { renderHandRow, renderPlusTrick, } from 'even-card-platform';
+import { renderHand, renderPlusTrick, sortBySuit, } from 'even-card-platform';
 import { autoplayUntilHuman, DEFAULT_DIFFICULTY } from './ai';
 import { legalPlays, newGame, playCard, startNewHand, gameWinner, } from './engine';
 const HUMAN = 'S';
@@ -64,7 +64,12 @@ class HeartsHandle {
         // transition (init, tap, new-game), so by the time render runs the
         // turn is always HUMAN. AI plays through synchronously between
         // human moves; there's no "AI thinking" state the user ever sees.
-        const hand = s.hands[HUMAN];
+        //
+        // Hand is sorted by suit + rank so cursor movement feels predictable
+        // (rank groups cluster visually). With 13 cards the platform's
+        // renderHand splits into two rows so the layout fits the 576 px
+        // display — see regression test in tests/hand.test.ts.
+        const sorted = sortBySuit(s.hands[HUMAN]);
         const legal = legalPlays(s, HUMAN);
         const trickLines = renderPlusTrick({
             plays: ['N', 'W', 'E', 'S'].map(pos => ({
@@ -73,10 +78,10 @@ class HeartsHandle {
             })),
             getMarker: pos => this.markersFor(pos),
         });
-        const handLines = renderHandRow({
-            hand,
+        const handLines = renderHand({
+            hand: sorted,
             cursorIdx: this.cursor,
-            legal,
+            legal: legal,
         });
         const body = [
             ...trickLines,
@@ -106,22 +111,24 @@ class HeartsHandle {
         // play phase
         if (s.turn !== HUMAN)
             return; // ignore input while AI thinks
-        const hand = s.hands[HUMAN];
+        // The cursor walks the SORTED view (same view the user sees on
+        // glasses). Tap fetches the cursored card from the sorted view and
+        // plays THAT card; the engine doesn't care about display order.
+        const sorted = sortBySuit(s.hands[HUMAN]);
         const legal = legalPlays(s, HUMAN);
         const legalKeys = new Set(legal.map(cardId));
         switch (g.kind) {
             case 'swipe-up':
-                this.cursor = (this.cursor - 1 + hand.length) % hand.length;
+                this.cursor = (this.cursor - 1 + sorted.length) % sorted.length;
                 return;
             case 'swipe-down':
-                this.cursor = (this.cursor + 1) % hand.length;
+                this.cursor = (this.cursor + 1) % sorted.length;
                 return;
             case 'tap': {
-                const c = hand[this.cursor];
+                const c = sorted[this.cursor];
                 if (!c || !legalKeys.has(cardId(c)))
                     return; // illegal — ignore
                 this.state = playCard(s, HUMAN, c);
-                // Let AI play through until it's the human's turn again.
                 this.state = autoplayUntilHuman(this.state, HUMAN, this.difficulty);
                 this.clampCursor();
                 return;
