@@ -1,0 +1,31 @@
+{
+  "name": "Card Pack",
+  "tagline": "Seven classic card games. Hands-free on G2.",
+  "category": "Entertainment",
+  "description": "Seven classic card games on your G2 smart glasses. Everything happens on the lenses — your hand, the trick in front of you, the score, all visible without picking up your phone.\n\nTrick-taking trio: Hearts (avoid hearts and the Queen of Spades), Spades (bid and bury), Euchre (right and left bowers, partner across the table).\n\nPatience: Klondike Solitaire — stock, foundations, tableaus, the classic.\n\nTwo-player strategy: Cribbage (pegging, your fifteens, his nibs) and Gin Rummy (sets, runs, knock when you're under ten).\n\nShedding: Crazy Eights — match by rank or suit, eights are wild, first to empty their hand wins.\n\nOne unified launcher: swipe up/down to choose, tap to start. Every game obeys the same gesture grammar so muscle memory transfers — swipe to navigate the cursor, tap to play, double-tap to advance through end-of-hand and end-of-game screens. The phone view mirrors the glasses display and provides per-game settings (difficulty, target score) plus a New game / Back to menu button for when you want to bail out between hands.\n\nThree difficulty tiers across every game where it makes sense (Easy / Medium / Hard), so the same app grows with you.\n\nHands-free. No microphone. No internet required. AI plays at full speed when it's not your turn.",
+  "tags": ["card-games", "hearts", "solitaire", "cribbage", "trick-taking"],
+  "icon_text": "CP",
+  "screenshots": [
+    "store-assets/01-launcher.png",
+    "store-assets/02-mid-trick.png",
+    "store-assets/03-hand-end.png",
+    "store-assets/04-game-end.png"
+  ],
+  "cover_screenshot_index": 1,
+  "cover_environment": "Home",
+  "permissions": {
+    "microphone": false,
+    "location": false,
+    "push_notifications": false,
+    "local_network": false,
+    "bluetooth": true,
+    "background_services": false,
+    "other": []
+  },
+  "data_collection": {
+    "location_tracked": false,
+    "ai_used": false,
+    "other": []
+  },
+  "third_party_services": []
+}

@@ -68,6 +68,22 @@ async function bootstrap(): Promise<void> {
     async setStorage(key: string, value: string): Promise<void> { await even.setStorage(key, value) },
   } : null
 
+  // State-log emission for the regression harness. Format:
+  //   [cardpack:state] view=launcher
+  //   [cardpack:state] view=hearts
+  // Matches the pattern used by Hands Free Lift / Hearts / Spades —
+  // scripts/regression.mjs polls the simulator's /api/console and asserts
+  // against these lines.
+  let lastState = ''
+  function emitState(): void {
+    const v = runtime.currentGameId() ?? 'launcher'
+    const next = `view=${v}`
+    if (next === lastState) return
+    lastState = next
+    // eslint-disable-next-line no-console
+    console.log(`[cardpack:state] ${next}`)
+  }
+
   const runtime = new Runtime({
     games: [heartsGame],
     bridge,
@@ -76,6 +92,7 @@ async function bootstrap(): Promise<void> {
     onRender: frame => {
       glassesMirror.textContent = frame
       if (even) void even.render(frame)
+      emitState()
     },
   })
 

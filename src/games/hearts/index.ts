@@ -76,10 +76,12 @@ class HeartsHandle implements GameHandle {
         controlHint: '[2x] next hand',
       }
     }
-    // phase === 'play'
-    const yourTurn = s.turn === HUMAN
+    // phase === 'play' — autoplayUntilHuman is invoked after every state
+    // transition (init, tap, new-game), so by the time render runs the
+    // turn is always HUMAN. AI plays through synchronously between
+    // human moves; there's no "AI thinking" state the user ever sees.
     const hand = s.hands[HUMAN]
-    const legal = yourTurn ? legalPlays(s, HUMAN) : []
+    const legal = legalPlays(s, HUMAN)
     const trickLines = renderPlusTrick({
       plays: (['N', 'W', 'E', 'S'] as Position[]).map(pos => ({
         pos,
@@ -89,7 +91,7 @@ class HeartsHandle implements GameHandle {
     })
     const handLines = renderHandRow({
       hand,
-      cursorIdx: yourTurn ? this.cursor : -1,
+      cursorIdx: this.cursor,
       legal,
     })
     const body = [
@@ -99,9 +101,7 @@ class HeartsHandle implements GameHandle {
     return {
       score: this.scoreString(),
       body,
-      controlHint: yourTurn
-        ? '[swipe] sel  [tap] play'
-        : `${s.turn} thinking…`,
+      controlHint: '[swipe] sel  [tap] play',
     }
   }
 
