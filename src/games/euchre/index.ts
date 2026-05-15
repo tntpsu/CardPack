@@ -177,12 +177,15 @@ class EuchreHandle implements GameHandle {
     const role = s.dealer === HUMAN ? 'you are dealer — pick up' : 'tell dealer to'
     const orderLabel = this.cursor === 0 ? '▶Order' : ' Order'
     const passLabel = this.cursor === 1 ? '▶Pass' : ' Pass'
+    const sortedHand = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
+    const handLines = renderHand({ hand: sortedHand, cursorIdx: -1 })
     return {
       score: this.scoreString(),
       body: [
         header,
         `Order up ${s.upCard.suit}? (${role})`,
         `${orderLabel}    ${passLabel}`,
+        ...handLines,
       ],
       controlHint: '[swipe] sel  [2x] confirm',
     }
@@ -193,10 +196,13 @@ class EuchreHandle implements GameHandle {
     const upCardDisplay = `${s.upCard.rank}${s.upCard.suit}`
     const header = `Dealer:${s.dealer}  Up:${upCardDisplay}`
 
+    const sortedHand = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
+    const handLines = renderHand({ hand: sortedHand, cursorIdx: -1 })
+
     if (s.turn !== HUMAN) {
       return {
         score: this.scoreString(),
-        body: [header, `${s.turn} is calling…`],
+        body: [header, `${s.turn} is calling…`, ...handLines],
         controlHint: '',
       }
     }
@@ -218,6 +224,7 @@ class EuchreHandle implements GameHandle {
         header,
         'Call trump?',
         labels.join('  '),
+        ...handLines,
       ],
       controlHint: isStickDealer
         ? '[swipe] sel  [2x] call  (stuck — must call)'
@@ -228,6 +235,11 @@ class EuchreHandle implements GameHandle {
   private renderPlay(): GlassesFrame {
     const s = this.state
     const trump = s.trump ?? '?'
+    // Dealer / maker / upcard reference line. v0.2.1 — field feedback
+    // surfaced that during play you can't tell who's dealer, who called
+    // trump, and what the upcard was (relevant for "was it picked up").
+    const upDisplay = `${s.upCard.rank}${s.upCard.suit}`
+    const contextLine = `D:${s.dealer}  Maker:${s.maker ?? '?'}  Up:${upDisplay}`
     const tricksLine = `Trump:${trump}  Tricks ${s.tricks.NS}-${s.tricks.EW}`
 
     const trick = this.lingerTrick ?? s.trick
@@ -250,7 +262,7 @@ class EuchreHandle implements GameHandle {
     })
     return {
       score: this.scoreString(),
-      body: [tricksLine, ...trickLines, ...handLines],
+      body: [contextLine, tricksLine, ...trickLines, ...handLines],
       controlHint: showCursor ? '[swipe] sel  [2x] play' : '',
     }
   }

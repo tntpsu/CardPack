@@ -112,6 +112,16 @@ describe('euchreGame — order-up bidding (human turn)', () => {
     h.destroy()
   })
 
+  it('v0.2.1: bidding screen shows your hand below the Order/Pass toggle', () => {
+    // Field feedback: in v0.2.0 the bid screen showed Order/Pass without
+    // the player's hand, so they couldn't see what they had to bid on.
+    const h = makeOrderUpHandle()
+    const body = h.render().body.join('\n')
+    // Hand rendering: at least one rank+suit combo should appear.
+    expect(body).toMatch(/[2-9JQKA][♠♥◆♣]|10[♠♥◆♣]/)
+    h.destroy()
+  })
+
   it('swipe-down moves cursor from Order to Pass', () => {
     const h = makeOrderUpHandle()
     h.handleGlassesInput({ kind: 'swipe-down' })
@@ -165,6 +175,13 @@ describe('euchreGame — call-trump phase (human turn)', () => {
     expect(body).toContain(' ♦')
     expect(body).toContain(' ♣')
     expect(body).toContain('Pass')
+    h.destroy()
+  })
+
+  it('v0.2.1: call-trump screen shows your hand below the picker', () => {
+    const h = makeCallTrumpHandle()
+    const body = h.render().body.join('\n')
+    expect(body).toMatch(/[2-9JQKA][♠♥◆♣]|10[♠♥◆♣]/)
     h.destroy()
   })
 
@@ -225,6 +242,23 @@ describe('euchreGame — play phase (with trump set)', () => {
     const frame = h.render()
     expect(frame.body.join('\n')).toContain('Trump:♥')
     expect(frame.controlHint).toContain('[2x] play')
+    h.destroy()
+  })
+
+  it('v0.2.1: play render shows dealer + maker + upcard context line', () => {
+    // Field feedback: during play you can't tell who dealt, who made
+    // trump, or what the upcard was (which would be in dealer's hand if
+    // round 1 was ordered up).
+    const h = makePlayHandle()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.dealer = 'W'
+    s.maker = 'E'
+    s.upCard = { rank: 'J', suit: '♥' }
+    const body = h.render().body.join('\n')
+    expect(body).toContain('D:W')
+    expect(body).toContain('Maker:E')
+    expect(body).toContain('Up:J♥')
     h.destroy()
   })
 

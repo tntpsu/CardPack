@@ -20,7 +20,7 @@ const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('App root missing')
 
 root.innerHTML = `
-  <main style="font-family: system-ui; padding: 1rem; max-width: 720px; margin: 0 auto; color: #232323; overflow-x: hidden;">
+  <main style="font-family: system-ui; padding: 1rem; max-width: 720px; margin: 0 auto; color: #232323; overflow-x: hidden; overscroll-behavior: contain;">
     <h1 style="margin: 0 0 .25rem 0;">Card Pack <span style="font-size: .55em; color: #7b7b7b; font-weight: 400;">v${__APP_VERSION__}</span></h1>
     <p style="color: #7b7b7b; margin: 0 0 1rem 0;">Seven classic card games. One tap to play.</p>
     <p id="status" style="color: #7b7b7b; font-size: .9em; margin: 0 0 1rem 0;">Connecting…</p>
@@ -40,7 +40,7 @@ root.innerHTML = `
       <button id="end-game" type="button" style="padding:.5rem 1rem;cursor:pointer;margin-left:.5rem;max-width:100%;box-sizing:border-box;">End game (back to menu)</button>
     </section>
 
-    <details id="rules-disclosure" open style="margin-top: 1rem;">
+    <details id="rules-disclosure" style="margin-top: 1rem;">
       <summary style="cursor: pointer; font-weight: 600;">How to play</summary>
       <div id="rules-body" style="line-height: 1.55; color: #333; padding: .25rem .25rem 0;">
         <p style="color:#777;">Loading…</p>
