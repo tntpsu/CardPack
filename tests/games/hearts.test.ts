@@ -249,6 +249,99 @@ describe('heartsGame — tap behavior (after advancing to human turn)', () => {
   })
 })
 
+describe('heartsGame — hand-end render', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('shows "Hand done" + score lines + [2x] next hand at hand-end', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(h as any).state.phase = 'hand-end'
+    const frame = h.render()
+    expect(frame.body[0]).toBe('Hand done')
+    expect(frame.body.join('\n')).toContain('S(me):')
+    expect(frame.controlHint).toBe('[2x] next hand')
+    h.destroy()
+  })
+})
+
+describe('heartsGame — game-end render', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('shows winner banner + [2x] back-to-menu at game-end (human loses)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.phase = 'game-end'
+    s.score = { S: 50, W: 12, N: 25, E: 18 } // human (S) highest = loses
+    const frame = h.render()
+    expect(frame.body.join('\n')).toContain('*** THEM WIN ***')
+    expect(frame.controlHint).toBe('[2x] back to menu')
+    h.destroy()
+  })
+
+  it('shows "YOU WIN" when human has the lowest score', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.phase = 'game-end'
+    s.score = { S: 5, W: 50, N: 30, E: 28 } // human (S) lowest = wins
+    const frame = h.render()
+    expect(frame.body.join('\n')).toContain('*** YOU WIN ***')
+    h.destroy()
+  })
+})
+
+describe('heartsGame — double-tap at hand-end / game-end', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('double-tap at hand-end starts a new hand (phase → play, tricksPlayed → 0)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.phase = 'hand-end'
+    s.tricksPlayed = 13
+    h.handleGlassesInput({ kind: 'double-tap' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).state.phase).toBe('play')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).state.tricksPlayed).toBe(0)
+    h.destroy()
+  })
+
+  it('double-tap at game-end calls ctx.endGame()', () => {
+    const ctx = makeCtx()
+    const h = heartsGame.init(ctx)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(h as any).state.phase = 'game-end'
+    h.handleGlassesInput({ kind: 'double-tap' })
+    expect(ctx.endGame).toHaveBeenCalled()
+    h.destroy()
+  })
+
+  it('single-tap at hand-end is a no-op (only double-tap advances)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(h as any).state.phase = 'hand-end'
+    h.handleGlassesInput({ kind: 'tap' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).state.phase).toBe('hand-end')
+    h.destroy()
+  })
+
+  it('single-tap at game-end does not call endGame (only double-tap)', () => {
+    const ctx = makeCtx()
+    const h = heartsGame.init(ctx)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(h as any).state.phase = 'game-end'
+    h.handleGlassesInput({ kind: 'tap' })
+    expect(ctx.endGame).not.toHaveBeenCalled()
+    h.destroy()
+  })
+})
+
 describe('heartsGame — pacing + trick linger (the field bug from v0.1.2)', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })

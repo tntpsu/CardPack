@@ -143,6 +143,31 @@ async function main() {
   const png2 = await r2.arrayBuffer()
   check('glasses still rendering after gestures', png2.byteLength > 1000, `${png2.byteLength} bytes`)
 
+  console.log('7. Double-tap mid-play does not crash (Hearts swallows it as no-op)')
+  await input('double_click')
+  await new Promise(r => setTimeout(r, 500))
+  const errsAfterDoubleTap = (await checkConsoleErrors()).filter(e =>
+    !e.message.includes('Failed to fetch'))
+  check('double-tap mid-play does not crash', errsAfterDoubleTap.length === 0,
+    errsAfterDoubleTap.length > 0 ? errsAfterDoubleTap[0].message.slice(0, 80) : 'no errors')
+
+  console.log('8. Gesture spam (10 rapid inputs) → no crash, render survives')
+  // Stand-in for the BLE-write-serialization × concurrent-gesture cell.
+  // Real BLE write rate is bounded server-side; this proves the client
+  // doesn't itself crash when the user mashes the touchpad.
+  const spam = ['up', 'down', 'up', 'down', 'click', 'up', 'down', 'click', 'up', 'down']
+  for (const action of spam) {
+    try { await input(action) } catch { /* server may rate-limit; tolerate */ }
+  }
+  await new Promise(r => setTimeout(r, 800))
+  const errsAfterSpam = (await checkConsoleErrors()).filter(e =>
+    !e.message.includes('Failed to fetch'))
+  check('gesture spam does not crash', errsAfterSpam.length === 0,
+    errsAfterSpam.length > 0 ? errsAfterSpam[0].message.slice(0, 80) : 'no errors')
+  const r3 = await fetch(`${SIM_BASE}/api/screenshot/glasses`)
+  const png3 = await r3.arrayBuffer()
+  check('glasses still rendering after spam', png3.byteLength > 1000, `${png3.byteLength} bytes`)
+
   console.log()
   console.log(`Result: ${pass} passed, ${fail} failed`)
   if (fail > 0) {
