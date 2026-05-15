@@ -152,7 +152,9 @@ class HeartsHandle implements GameHandle {
         this.cursor = (this.cursor + 1) % sorted.length
         this.ctx.requestRender()
         return
-      case 'tap': {
+      case 'tap':
+        return  // v0.1.5: tap is a no-op mid-play to prevent accidental plays
+      case 'double-tap': {
         const c = sorted[this.cursor]
         if (!c) return
         const legal = legalPlays(s, HUMAN)
@@ -160,8 +162,6 @@ class HeartsHandle implements GameHandle {
         this.applyPlay(HUMAN, c)
         return
       }
-      case 'double-tap':
-        return  // unused mid-play
     }
   }
 
@@ -232,6 +232,7 @@ class HeartsHandle implements GameHandle {
     this.pendingTimer = setTimeout(() => {
       this.pendingTimer = null
       this.lingerTrick = null
+      this.clampCursor()  // re-park if turn is now HUMAN with a new lead suit
       this.ctx.requestRender()
       this.scheduleNextStep()
     }, TRICK_LINGER_MS)
@@ -248,7 +249,8 @@ class HeartsHandle implements GameHandle {
 
   private scoreString(): string {
     const s = this.state.score
-    return `S:${s.S} W:${s.W} N:${s.N} E:${s.E}`
+    const hp = this.state.handPoints
+    return `S:${s.S}(+${hp.S})  W:${s.W}(+${hp.W})  N:${s.N}(+${hp.N})  E:${s.E}(+${hp.E})`
   }
 
   private scoreLines(): string[] {
@@ -275,6 +277,24 @@ class HeartsHandle implements GameHandle {
     const len = this.state.hands[HUMAN].length
     if (len === 0) { this.cursor = 0; return }
     this.cursor = Math.max(0, Math.min(len - 1, this.cursor))
+    this.parkCursorOnLegal()
+  }
+
+  /** When it becomes HUMAN's turn and the current cursor sits on an
+   *  illegal card (e.g. wrong suit when must-follow), advance it to the
+   *  first legal card in the sorted hand. No-op otherwise — user-driven
+   *  cursor movement within legal options is respected. v0.1.5. */
+  private parkCursorOnLegal(): void {
+    if (this.state.phase !== 'play') return
+    if (this.state.turn !== HUMAN) return
+    if (this.lingerTrick !== null) return
+    const sorted = sortBySuit(this.state.hands[HUMAN] as readonly PlatformCard[]) as Card[]
+    if (sorted.length === 0) return
+    const legal = legalPlays(this.state, HUMAN)
+    const currentCard = sorted[this.cursor]
+    if (currentCard && legal.some(l => cardId(l) === cardId(currentCard))) return
+    const firstLegalIdx = sorted.findIndex(c => legal.some(l => cardId(l) === cardId(c)))
+    if (firstLegalIdx !== -1) this.cursor = firstLegalIdx
   }
 }
 
@@ -312,8 +332,9 @@ const HEARTS_RULES_HTML = `
   <h3 style="margin: 1rem 0 .25rem; font-size: 1rem;">Glasses controls</h3>
   <ul style="margin: 0 0 .5rem; padding-left: 1.25rem;">
     <li><strong>Swipe up/down</strong> — move the ▲ cursor through your hand</li>
-    <li><strong>Tap</strong> — play the highlighted card</li>
-    <li><strong>Double-tap</strong> — at hand-end: next hand. At game-end: back to menu.</li>
+    <li><strong>Double-tap</strong> — play the highlighted card. At hand-end: next hand. At game-end: back to menu.</li>
+    <li><strong>Single tap</strong> — does nothing mid-game (so an accidental tap can't play a card you didn't mean to).</li>
+    <li>Your cursor parks on a legal card automatically when you must follow suit.</li>
   </ul>
 
   <h3 style="margin: 1rem 0 .25rem; font-size: 1rem;">On-screen markers</h3>
@@ -321,7 +342,7 @@ const HEARTS_RULES_HTML = `
     <li><code>(me)</code> = you (South); <code>(led)</code> = led the current trick</li>
     <li>Suits: <code>♠</code> spades, <code>♥</code> hearts, <code>◆</code> diamonds, <code>♣</code> clubs</li>
     <li>Cards in <code>(parens)</code> in your hand = illegal play right now</li>
-    <li>Score row: <code>S:N W:N N:N E:N</code> in points so far</li>
+    <li>Score row: <code>S:N(+H) W:N(+H) ...</code> where <code>N</code> is cumulative game score and <code>(+H)</code> is points taken this hand (same format the hand-end summary uses)</li>
   </ul>
 `
 

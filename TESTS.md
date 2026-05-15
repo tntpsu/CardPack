@@ -1,6 +1,6 @@
 # TESTS — coverage matrix
 
-Last updated: 2026-05-15 (v0.1.4 — coverage gate filled before portal upload)
+Last updated: 2026-05-15 (v0.1.5 — Phase A field feedback: cursor park, running score, double-tap-to-play)
 
 This is the build gate for Card Pack. Every feature gets a row, every cell
 gets either a test reference, `manual:<reason>`, or `skip:<reason>`. Empty
@@ -32,14 +32,16 @@ Columns dropped as n/a:
 | Hearts: init (deals, sets first turn) | unit:hearts:init+initial-frame | skip:no-user-input-surface | n/a | n/a | n/a |
 | Hearts: render mid-play | unit:hearts:initial-frame+plus-trick | n/a | n/a | n/a | n/a |
 | Hearts: cursor swipe moves through hand | unit:hearts:cursor-move+wrap | n/a | n/a | unit:hearts:gestures-execute | n/a |
-| Hearts: tap on legal card plays it | unit:hearts:tap-cycle | unit:hearts:tap-cycle (illegal taps no-op) | skip:hearts-handle-no-storage | n/a | n/a |
-| Hearts: tap on illegal card is no-op | unit:hearts:tap-cycle (covered: cycle proves illegal-cursor taps don't advance) | unit:hearts:tap-cycle | n/a | n/a | n/a |
-| Hearts: AI plays through after human | unit:hearts:tap-cycle (indirectly — tap returns with state advanced past AI plays) | n/a | n/a | n/a | n/a |
+| Hearts: double-tap on legal card plays it (v0.1.5: tap→double-tap to prevent accidental play) | unit:hearts:double-tap-plays | unit:hearts:double-tap-on-illegal-noop | skip:hearts-handle-no-storage | n/a | n/a |
+| Hearts: single-tap mid-play is a no-op (v0.1.5 invariant — prevents accidental play) | unit:hearts:single-tap-mid-play-noop | n/a | n/a | n/a | n/a |
+| Hearts: AI plays through after human | unit:hearts:double-tap-plays (indirectly — double-tap returns with state advanced past AI plays) | n/a | n/a | n/a | n/a |
+| Hearts: auto-park cursor on first legal card (v0.1.5) | unit:hearts:cursor-park-on-lead-suit | n/a | n/a | n/a | n/a |
+| Hearts: running hand-points visible in score header (v0.1.5) | unit:hearts:running-score-format | n/a | n/a | n/a | n/a |
 | Hearts: render hand-end | unit:hearts:hand-end-render | n/a | n/a | n/a | n/a |
 | Hearts: render game-end with banner | unit:hearts:game-end-render (both YOU WIN + THEM WIN) | n/a | n/a | n/a | n/a |
 | Hearts: double-tap at hand-end → new hand | unit:hearts:hand-end-double-tap + unit:hearts:hand-end-single-tap-noop | n/a | n/a | n/a | n/a |
 | Hearts: double-tap at game-end → exit | unit:hearts:game-end-double-tap + unit:hearts:game-end-single-tap-noop | n/a | n/a | n/a | n/a |
-| Hearts: mid-play double-tap is no-op | unit:hearts:mid-play-double-tap | n/a | n/a | n/a | n/a |
+| (removed v0.1.5: mid-play double-tap is now the *play* gesture; see "double-tap on legal card plays it" above) | — | — | — | — | — |
 | Hearts: ctx.endGame() returns to launcher | platform:runtime | n/a | n/a | n/a | n/a |
 | Hearts: phone "New game" event | unit:hearts:phone-new-game | unit:hearts:unknown-phone-event | n/a | n/a | n/a |
 | Hearts: destroy() doesn't throw | unit:hearts:destroy | n/a | n/a | n/a | n/a |

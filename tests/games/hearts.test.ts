@@ -96,9 +96,9 @@ describe('heartsGame.init — initial render', () => {
     h.destroy()
   })
 
-  it('initial score is "S:0 W:0 N:0 E:0" — fresh game', () => {
+  it('initial score is "S:0(+0)  W:0(+0)  N:0(+0)  E:0(+0)" — matches hand-end (+N) format (v0.1.5)', () => {
     const h = heartsGame.init(makeCtx())
-    expect(h.render().score).toBe('S:0 W:0 N:0 E:0')
+    expect(h.render().score).toBe('S:0(+0)  W:0(+0)  N:0(+0)  E:0(+0)')
     h.destroy()
   })
 
@@ -180,7 +180,7 @@ describe('heartsGame — phone "new-game" event', () => {
   it('after new-game, score is back to 0', () => {
     const h = heartsGame.init(makeCtx())
     h.handlePhoneEvent({ kind: 'new-game' })
-    expect(h.render().score).toBe('S:0 W:0 N:0 E:0')
+    expect(h.render().score).toBe('S:0(+0)  W:0(+0)  N:0(+0)  E:0(+0)')
     h.destroy()
   })
 })
@@ -221,17 +221,17 @@ describe('heartsGame — cursor movement (after advancing to human turn)', () =>
   })
 })
 
-describe('heartsGame — tap behavior (after advancing to human turn)', () => {
+describe('heartsGame — play gesture (v0.1.5: double-tap, not tap)', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
 
-  it('tap eventually advances state — cycle through the hand until a legal card is found', () => {
+  it('double-tap on legal cursored card plays it — cycle through hand until cursor parks on a legal one', () => {
     const h = heartsGame.init(makeCtx())
     advanceUntilHumanTurn(h)
     const before = h.render().body.join('\n')
     let changed = false
     for (let i = 0; i < 13; i++) {
-      h.handleGlassesInput({ kind: 'tap' })
+      h.handleGlassesInput({ kind: 'double-tap' })
       if (h.render().body.join('\n') !== before) { changed = true; break }
       h.handleGlassesInput({ kind: 'swipe-down' })
     }
@@ -239,15 +239,84 @@ describe('heartsGame — tap behavior (after advancing to human turn)', () => {
     h.destroy()
   })
 
-  it('mid-play double-tap is a no-op (only meaningful at hand-end/game-end)', () => {
+  it('single-tap mid-play is a no-op (v0.1.5: prevents accidental plays)', () => {
     const h = heartsGame.init(makeCtx())
     advanceUntilHumanTurn(h)
+    const before = h.render().body.join('\n')
+    // 13 single-taps in a row should not advance state.
+    for (let i = 0; i < 13; i++) {
+      h.handleGlassesInput({ kind: 'tap' })
+    }
+    expect(h.render().body.join('\n')).toBe(before)
+    h.destroy()
+  })
+
+  it('double-tap on illegal cursored card is a no-op (cursor stays, no play happens)', () => {
+    const h = heartsGame.init(makeCtx())
+    advanceUntilHumanTurn(h)
+    // Manually move cursor onto a card we KNOW is illegal: cursor is parked
+    // on a legal card by v0.1.5 auto-park, so swipe-down to move OFF the
+    // legal subset (if multi-suit hand) or rely on the legal subset being
+    // small enough that other cards are illegal.
+    // Simplest assertion: when cursor is on an illegal card (manually
+    // walked off), double-tap doesn't change the rendered body.
+    // We find an illegal card by checking the rendered hand for parens "(X)".
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sorted = sortHandFromHandle(h)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const legal = (h as any).state ? legalCardIds(h) : new Set<string>()
+    const illegalIdx = sorted.findIndex(c => !legal.has(`${c.suit}${c.rank}`))
+    if (illegalIdx === -1) {
+      // All cards legal (e.g. leading) — skip this assertion gracefully.
+      h.destroy()
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(h as any).cursor = illegalIdx
     const before = h.render().body.join('\n')
     h.handleGlassesInput({ kind: 'double-tap' })
     expect(h.render().body.join('\n')).toBe(before)
     h.destroy()
   })
 })
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sortHandFromHandle(h: any): Array<{suit: string; rank: string}> {
+  const order: Record<string, number> = { '♠': 0, '♥': 1, '♦': 2, '♣': 3 }
+  const ranks: Record<string, number> = {
+    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+    '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14,
+  }
+  const hand = (h.state.hands.S as Array<{suit: string; rank: string}>).slice()
+  hand.sort((a, b) => {
+    const sd = (order[a.suit] ?? 99) - (order[b.suit] ?? 99)
+    if (sd !== 0) return sd
+    return (ranks[a.rank] ?? 0) - (ranks[b.rank] ?? 0)
+  })
+  return hand
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function legalCardIds(h: any): Set<string> {
+  // Mirror the engine's legalPlays for the current state, given h.state.turn === 'S'.
+  // Simpler: read it via reflection if accessible. Fall back to "all cards legal"
+  // when we can't compute it cleanly (the test caller handles the empty case).
+  // For now, infer "legal" by re-rendering and looking at the hand row — cards
+  // without parens are legal. This is good enough for "find any illegal idx" tests.
+  const frame = h.render() as { body: string[] }
+  const ids = new Set<string>()
+  const handLineRe = /(?:\(([2-9JQKA]|10)([♠♥◆♣])\)|([2-9JQKA]|10)([♠♥◆♣]))/g
+  for (const line of frame.body) {
+    for (const m of line.matchAll(handLineRe)) {
+      if (m[3] && m[4]) {
+        // Non-paren match = legal card. Note ◆ is the platform's diamond glyph.
+        const suit = m[4] === '◆' ? '♦' : m[4]
+        ids.add(`${suit}${m[3]}`)
+      }
+    }
+  }
+  return ids
+}
 
 describe('heartsGame — hand-end render', () => {
   beforeEach(() => { vi.useFakeTimers() })
@@ -361,11 +430,11 @@ describe('heartsGame — pacing + trick linger (the field bug from v0.1.2)', () 
     // Clear any pending linger from initial AI plays before our tap.
     vi.advanceTimersByTime(1000)
     advanceUntilHumanTurn(h)
-    // Find a legal card and play it.
+    // Find a legal card and play it (v0.1.5: double-tap to play).
     let played = false
     for (let i = 0; i < 13; i++) {
       const before = h.render().body.join('\n')
-      h.handleGlassesInput({ kind: 'tap' })
+      h.handleGlassesInput({ kind: 'double-tap' })
       if (h.render().body.join('\n') !== before) { played = true; break }
       h.handleGlassesInput({ kind: 'swipe-down' })
     }
@@ -395,6 +464,135 @@ describe('heartsGame — pacing + trick linger (the field bug from v0.1.2)', () 
     // game (turn = S from init), AI doesn't play yet — but we'd still
     // see 0 ≤ delta, not a crash.
     expect(finalRenderCount).toBeGreaterThanOrEqual(initialRenderCount)
+    h.destroy()
+  })
+})
+
+describe('heartsGame — running score format (v0.1.5)', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('scoreString shows game-score with parens-subordinated hand-points: S:N(+H)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.score = { S: 5, W: 12, N: 0, E: 3 }
+    s.handPoints = { S: 2, W: 0, N: 13, E: 1 }
+    expect(h.render().score).toBe('S:5(+2)  W:12(+0)  N:0(+13)  E:3(+1)')
+    h.destroy()
+  })
+
+  it('hand-points reset to (+0) across the row right after startNewHand', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.score = { S: 5, W: 12, N: 0, E: 3 }
+    s.handPoints = { S: 2, W: 0, N: 13, E: 1 }
+    s.phase = 'hand-end'
+    s.tricksPlayed = 13
+    h.handleGlassesInput({ kind: 'double-tap' }) // start new hand
+    const frame = h.render()
+    // Game score persists; hand-points reset to (+0).
+    expect(frame.score).toBe('S:5(+0)  W:12(+0)  N:0(+0)  E:3(+0)')
+    h.destroy()
+  })
+})
+
+describe('heartsGame — cursor parking on legal cards (v0.1.5)', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('parks cursor on first legal card when must-follow-suit', () => {
+    const h = heartsGame.init(makeCtx())
+    // Set up a mid-trick scenario where HUMAN must follow ♥.
+    // Hand: 2♠, 7♥, 9♥, 4♦, 6♣ → sortBySuit order: ♠ ♥ ♦ ♣
+    // → sorted = [2♠, 7♥, 9♥, 4♦, 6♣]
+    // Legal subset (must follow ♥): [7♥, 9♥]
+    // Cursor starts at 0 (2♠ = illegal). Park should land it at index 1 (7♥).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const internal: any = (h as any)
+    internal.state.turn = 'S'
+    internal.state.phase = 'play'
+    internal.state.tricksPlayed = 5 // past the first-trick special rule
+    internal.state.heartsBroken = true
+    internal.state.trick = {
+      plays: [{ pos: 'W', card: { suit: '♥', rank: '5' } }],
+      leadSuit: '♥',
+    }
+    internal.state.hands = {
+      S: [
+        { suit: '♠', rank: '2' },
+        { suit: '♥', rank: '7' },
+        { suit: '♥', rank: '9' },
+        { suit: '♦', rank: '4' },
+        { suit: '♣', rank: '6' },
+      ],
+      W: [], N: [], E: [],
+    }
+    internal.cursor = 0
+    internal.parkCursorOnLegal()
+    expect(internal.cursor).toBe(1) // 7♥ in sorted order
+    h.destroy()
+  })
+
+  it('does not move cursor when current card is already legal (respects user movement)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const internal: any = (h as any)
+    internal.state.turn = 'S'
+    internal.state.phase = 'play'
+    internal.state.tricksPlayed = 5
+    internal.state.heartsBroken = true
+    internal.state.trick = {
+      plays: [{ pos: 'W', card: { suit: '♥', rank: '5' } }],
+      leadSuit: '♥',
+    }
+    internal.state.hands = {
+      S: [
+        { suit: '♠', rank: '2' },
+        { suit: '♥', rank: '7' },
+        { suit: '♥', rank: '9' },
+        { suit: '♦', rank: '4' },
+      ],
+      W: [], N: [], E: [],
+    }
+    // Cursor on 9♥ (index 2 in sorted = ♠2 ♥7 ♥9 ♦4) — legal.
+    internal.cursor = 2
+    internal.parkCursorOnLegal()
+    expect(internal.cursor).toBe(2) // unchanged — user chose 9♥, respected
+    h.destroy()
+  })
+
+  it('does not park when it is AI\'s turn (no-op until HUMAN gets the lead)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const internal: any = (h as any)
+    internal.state.turn = 'W' // not HUMAN
+    internal.state.phase = 'play'
+    internal.cursor = 0
+    internal.parkCursorOnLegal()
+    expect(internal.cursor).toBe(0) // untouched
+    h.destroy()
+  })
+
+  it('does not park during a linger window (cursor frozen while trick is visible)', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const internal: any = (h as any)
+    internal.state.turn = 'S'
+    internal.state.phase = 'play'
+    internal.lingerTrick = {
+      plays: [
+        { pos: 'S', card: { suit: '♥', rank: '5' } },
+        { pos: 'W', card: { suit: '♥', rank: '8' } },
+        { pos: 'N', card: { suit: '♥', rank: 'K' } },
+        { pos: 'E', card: { suit: '♥', rank: '3' } },
+      ],
+      leadSuit: '♥',
+    }
+    internal.cursor = 0
+    internal.parkCursorOnLegal()
+    expect(internal.cursor).toBe(0) // untouched during linger
     h.destroy()
   })
 })
