@@ -65,4 +65,36 @@ goes in the entry and the entry stays as a regression marker.
 
 ## Open risks (pre-Phase B)
 
-(none yet beyond the four-point list above)
+(closed — Euchre landed in v0.2.0)
+
+---
+
+## Phase B integration — Euchre joins Hearts
+
+**2026-05-15** — v0.2.0 ships with two games registered in the same pack.
+
+### What the platform was asked to do for the first time
+
+- Two `Game` modules registered in the Runtime constructor (`[heartsGame, euchreGame]`).
+- `Launcher.render()` returns a 2-row game list.
+- `renderPhoneRules()` swaps based on `runtime.currentGameId()` across two games.
+- `GlassesFrame` shape ({score, body, controlHint, banner?}) had to absorb three new render modes:
+  - **Bidding (order-up)**: header line + "Order up X?" + cursor toggle line + control hint.
+  - **Bidding (call-trump)**: header line + "Call trump?" line + cursor over 3 suits + Pass option.
+  - **Dealer discard sub-state**: hand+upcard rendering (6 cards in the row).
+- **Team score format**: Hearts uses `S:N(+H)` per-player; Euchre uses `Us:N(+T)  Them:N(+T)`. Same `(+N)` parens convention preserved for consistency.
+- **5-card vs 13-card hand**: Euchre fits in one row (single-row cursor below), Hearts wraps to two rows (between-rows cursor flip). Same `renderHand` API handles both via the `maxPerRow` threshold.
+
+### What did not need to change
+
+- Auto-park cursor on legal card — works identically for trump-aware `legalPlays`.
+- Double-tap-to-play / single-tap-no-op convention — applied uniformly across Hearts + Euchre.
+- Pacing engine (AI step delay + trick linger) — Euchre uses the same pattern; bid phases run at a faster `BID_STEP_MS` since there's no card-on-screen.
+
+### Hardware gate (pending)
+
+A round of Euchre on real glasses to confirm:
+- The Order/Pass toggle is glanceable.
+- The 3-suit picker with Pass cycles cleanly.
+- Score format "Us:N(+T)  Them:N(+T)" fits the 576 px display in worst case.
+- Bidding phases pace correctly (not too fast, not too slow).

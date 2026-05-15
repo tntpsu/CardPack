@@ -1,19 +1,17 @@
 # TESTS — coverage matrix
 
-Last updated: 2026-05-15 (v0.1.5 — Phase A field feedback: cursor park, running score, double-tap-to-play)
+Last updated: 2026-05-15 (v0.2.0 — Phase B: Euchre joins Hearts in the pack)
 
 This is the build gate for Card Pack. Every feature gets a row, every cell
 gets either a test reference, `manual:<reason>`, or `skip:<reason>`. Empty
 cells block the next ship. See `~/.claude/skills/coverage-matrix/SKILL.md`
 for the full discipline.
 
-**Current state is honest about Phase A's testing gap.** Many cells are empty
-or `TODO` — this matrix exists to surface them, not hide them. v0.1.1 was
-shipped without these tests; v0.1.2 is gated on filling them.
-
-The shared platform's coverage (78 unit tests in `even-card-platform`) is
+The shared platform's coverage (93 unit tests in `even-card-platform`) is
 tracked in its own `TESTS.md`. Cells here that say `platform:<name>` reference
-tests that already pass in that repo.
+tests that already pass in that repo. Euchre engine + AI (109 + 284 + 73 unit
+tests in `~/Documents/Euchre`) are tested upstream — cells that say
+`engine:euchre` reference tests in that repo.
 
 ## Use case × failure mode
 
@@ -55,6 +53,27 @@ Columns dropped as n/a:
 | Glasses screenshot is non-blank | e2e:3+6 | n/a | n/a | n/a | n/a |
 | BLE write serialization (no crash) | platform:runtime + manual:hw | n/a | n/a | e2e:8 (gesture spam) | manual |
 | App icon renders in portal | manual:DOM | n/a | n/a | n/a | n/a |
+| Euchre: module metadata (id, name, glyph, category) | unit:euchre:module-metadata | n/a | n/a | n/a | n/a |
+| Euchre: init renders Order-up phase with Dealer + Up: header | unit:euchre:init-render | n/a | n/a | n/a | n/a |
+| Euchre: order-up bidding — Order/Pass toggle cursor | unit:euchre:order-up-toggle | n/a | n/a | n/a | n/a |
+| Euchre: order-up double-tap on Pass → state.passes++ | unit:euchre:order-up-pass | n/a | n/a | n/a | n/a |
+| Euchre: call-trump renders 3 callable suits + Pass | unit:euchre:call-trump-render | n/a | n/a | n/a | n/a |
+| Euchre: call-trump swipe cycles suits + Pass | unit:euchre:call-trump-cycle | n/a | n/a | n/a | n/a |
+| Euchre: call-trump double-tap on suit → phase=play | unit:euchre:call-trump-confirm | n/a | n/a | n/a | n/a |
+| Euchre: stick-the-dealer hides Pass + shows hint | unit:euchre:stick-dealer | n/a | n/a | n/a | n/a |
+| Euchre: play-phase render shows Trump:X + trick + hand | unit:euchre:play-render | n/a | n/a | n/a | n/a |
+| Euchre: single-tap mid-play no-op; double-tap plays legal | unit:euchre:play-double-tap | n/a | n/a | n/a | n/a |
+| Euchre: hand-end render shows Hand done + tricks + trump | unit:euchre:hand-end-render | n/a | n/a | n/a | n/a |
+| Euchre: game-end render shows US WIN / THEM WIN banner | unit:euchre:game-end-render | n/a | n/a | n/a | n/a |
+| Euchre: hand-end double-tap → next hand (phase=order-up) | unit:euchre:hand-end-double-tap | n/a | n/a | n/a | n/a |
+| Euchre: game-end double-tap → ctx.endGame() | unit:euchre:game-end-double-tap | n/a | n/a | n/a | n/a |
+| Euchre: phone new-game resets to order-up + scores 0 | unit:euchre:phone-new-game | unit:euchre:unknown-phone-event | n/a | n/a | n/a |
+| Euchre: phone set-difficulty updates this.difficulty | unit:euchre:phone-set-difficulty | n/a | n/a | n/a | n/a |
+| Euchre: cursor parks on first legal card (must-follow) | unit:euchre:cursor-park | n/a | n/a | n/a | n/a |
+| Euchre: destroy() doesn't throw + cancels timers | unit:euchre:destroy + unit:euchre:destroy-cancels-timers | n/a | n/a | n/a | n/a |
+| Euchre: team-score format "Us:N(+T)  Them:N(+T)" | unit:euchre:initial-score | n/a | n/a | n/a | n/a |
+| Two-game launcher: Hearts + Euchre both registered | manual:hw (launcher logic in platform; integration check on real glasses) | n/a | n/a | n/a | n/a |
+| Rules pane swaps on active game change | skip:one-line-wiring (`game?.renderPhoneRules?.()` in main.ts; per-game HTML covered by unit:hearts:rules + unit:euchre:rules) | n/a | n/a | n/a | n/a |
 
 `TODO:unit` = vitest case to be written in `tests/games/hearts.test.ts` or `tests/main.test.ts`.
 `TODO:integration` = vitest with jsdom + a fake bridge.
@@ -75,7 +94,15 @@ Columns dropped as n/a:
 - [x] License/NOTICE present
 
 ### Unit (Vitest, CardPack-side)
-- **26 tests** in `tests/games/hearts.test.ts`. Cover module metadata,
+- **60 tests across 2 files** — `tests/games/hearts.test.ts` (35) and
+  `tests/games/euchre.test.ts` (25). Euchre wrapper tests cover module
+  metadata, init render, order-up bidding (toggle, Pass, single-tap no-op),
+  call-trump render + cycle + confirm + stick-the-dealer, play-phase
+  render + gestures, hand-end + game-end render, phone new-game and
+  set-difficulty events, cursor parking, and destroy semantics. Engine +
+  AI correctness is covered upstream in `~/Documents/Euchre/tests/` and
+  not duplicated here.
+- **35 tests** in `tests/games/hearts.test.ts`. Cover module metadata,
   initial render frame shape, score format, plus-trick markers, controlHint,
   destroy(), cursor movement (incl. wrap), gesture execution, phone
   new-game event, unknown phone event, mid-play double-tap no-op, the

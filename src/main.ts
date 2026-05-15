@@ -10,6 +10,7 @@ import type { GlassesGesture } from 'even-card-platform'
 
 import { connectEvenRuntime, type EvenRuntime } from './even'
 import { heartsGame } from './games/hearts'
+import { euchreGame } from './games/euchre'
 
 declare const __APP_VERSION__: string
 
@@ -35,7 +36,7 @@ root.innerHTML = `
     </section>
 
     <section style="margin-top: 1rem;">
-      <button id="new-game" type="button" style="padding:.5rem 1rem;cursor:pointer;max-width:100%;box-sizing:border-box;">New Hearts game</button>
+      <button id="new-game" type="button" style="padding:.5rem 1rem;cursor:pointer;max-width:100%;box-sizing:border-box;">New game</button>
       <button id="end-game" type="button" style="padding:.5rem 1rem;cursor:pointer;margin-left:.5rem;max-width:100%;box-sizing:border-box;">End game (back to menu)</button>
     </section>
 
@@ -48,7 +49,7 @@ root.innerHTML = `
 
     <section style="margin-top: 1rem;">
       <h2 style="font-size: 1.1em; margin: 1rem 0 .5rem 0;">In the pack</h2>
-      <p style="color:#555;">Phase A: Hearts only. Spades, Euchre, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in Phase B+.</p>
+      <p style="color:#555;">Phase B: Hearts + Euchre. Spades, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in Phase C+.</p>
     </section>
   </main>
 `
@@ -98,7 +99,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const runtime = new Runtime({
-    games: [heartsGame],
+    games: [heartsGame, euchreGame],
     bridge,
     packName: 'CARD PACK',
     difficulty: initialDifficulty,
@@ -116,7 +117,7 @@ async function bootstrap(): Promise<void> {
    *
    *  Per-game rules come from each Game module's optional
    *  renderPhoneRules() — static HTML, lives on Game (not GameHandle). */
-  const REGISTERED_GAMES = [heartsGame]
+  const REGISTERED_GAMES = [heartsGame, euchreGame]
   function updateRulesPanel(): void {
     const activeId = runtime.currentGameId()
     const game = REGISTERED_GAMES.find(g => g.id === activeId) ?? REGISTERED_GAMES[0]

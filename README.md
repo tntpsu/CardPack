@@ -2,7 +2,7 @@
 
 Seven classic card games for [Even Realities G2 smart glasses](https://www.evenrealities.com), wrapped in one cohesive product.
 
-> **Status:** v0.1.8 — Hearts is playable on real glasses with phone-side difficulty selector. v0.1.8 adds a difficulty picker (Easy / Medium / Hard), persists the choice in `localStorage`, and applies on the very next AI play (no need to restart the hand). Phone UI cleanup: removed the mirror (no value to an end user wearing glasses) and shrunk the status line. Pre-Phase B — Spades / Euchre / Solitaire still to come. See the [shared platform](https://github.com/tntpsu/even-card-platform) for the visual + interaction contract every game obeys.
+> **Status:** v0.2.0 — Phase B opener. **Hearts + Euchre** both ship in the pack now. Euchre is a port of the standalone `~/Documents/Euchre` engine + AI, wrapped in the platform's `Game` interface; bidding, trump-aware legal-plays, dealer-discard sub-state, team score format, and stick-the-dealer all work end-to-end. The platform absorbed three new render modes (order-up, call-trump, dealer-discard) without API changes. Difficulty selector applies to both games. Single-row cursor still uses cursor-below (Euchre 5 cards); 2-row hands (Hearts 13) keep the between-rows ▲/▼ flip from v0.1.6. Spades / Solitaire / Crazy Eights / Cribbage / Gin Rummy land in Phase C+. See the [shared platform](https://github.com/tntpsu/even-card-platform) for the visual + interaction contract every game obeys.
 
 ## Games (v1.0 planned)
 
