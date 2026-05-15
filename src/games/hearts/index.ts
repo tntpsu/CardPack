@@ -173,6 +173,17 @@ class HeartsHandle implements GameHandle {
       this.clampCursor()
       this.ctx.requestRender()
       this.scheduleNextStep()
+      return
+    }
+    if (ev.kind === 'set-difficulty') {
+      // v0.1.8: phone-side difficulty picker. AI is stateless (pure
+      // function of state + difficulty), so the new level applies on the
+      // very next AI play — no need to restart the hand.
+      const value = ev.payload
+      if (value === 'easy' || value === 'medium' || value === 'hard') {
+        this.difficulty = value
+      }
+      return
     }
   }
 

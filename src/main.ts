@@ -22,11 +22,16 @@ root.innerHTML = `
   <main style="font-family: system-ui; padding: 1rem; max-width: 720px; margin: 0 auto; color: #232323; overflow-x: hidden;">
     <h1 style="margin: 0 0 .25rem 0;">Card Pack <span style="font-size: .55em; color: #7b7b7b; font-weight: 400;">v${__APP_VERSION__}</span></h1>
     <p style="color: #7b7b7b; margin: 0 0 1rem 0;">Seven classic card games. One tap to play.</p>
-    <p id="status" style="margin: 0 0 1rem 0;">Connecting…</p>
+    <p id="status" style="color: #7b7b7b; font-size: .9em; margin: 0 0 1rem 0;">Connecting…</p>
 
-    <section style="background: #f5f5f5; padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 1rem;">
-      <h3 style="font-size: 1em; margin: 0 0 .5rem 0;">Now (mirror)</h3>
-      <pre id="glasses-mirror" style="font-family: ui-monospace, monospace; margin: 0; white-space: pre-wrap; font-size: .85em;"></pre>
+    <section style="margin-top: 1rem; margin-bottom: 1rem;">
+      <label for="difficulty" style="display: block; margin-bottom: .35rem; font-weight: 600;">AI difficulty</label>
+      <select id="difficulty" style="padding: .5rem .75rem; max-width: 100%; box-sizing: border-box; font-size: 1rem; min-width: 160px;">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <p style="color: #7b7b7b; font-size: .85em; margin: .25rem 0 0;">Changes take effect on the next AI play — no need to restart the hand.</p>
     </section>
 
     <section style="margin-top: 1rem;">
@@ -49,10 +54,19 @@ root.innerHTML = `
 `
 
 const statusEl = document.querySelector<HTMLParagraphElement>('#status')!
-const glassesMirror = document.querySelector<HTMLPreElement>('#glasses-mirror')!
 const newGameBtn = document.querySelector<HTMLButtonElement>('#new-game')!
 const endGameBtn = document.querySelector<HTMLButtonElement>('#end-game')!
 const rulesBody = document.querySelector<HTMLDivElement>('#rules-body')!
+const difficultySelect = document.querySelector<HTMLSelectElement>('#difficulty')!
+
+const DIFFICULTY_STORAGE_KEY = 'cardpack:difficulty'
+type Difficulty = 'easy' | 'medium' | 'hard'
+function readSavedDifficulty(): Difficulty {
+  const raw = localStorage.getItem(DIFFICULTY_STORAGE_KEY)
+  return raw === 'easy' || raw === 'hard' || raw === 'medium' ? raw : 'medium'
+}
+const initialDifficulty: Difficulty = readSavedDifficulty()
+difficultySelect.value = initialDifficulty
 
 // ─── Bootstrap ────────────────────────────────────────────────────────
 
@@ -87,9 +101,8 @@ async function bootstrap(): Promise<void> {
     games: [heartsGame],
     bridge,
     packName: 'CARD PACK',
-    difficulty: 'medium',
+    difficulty: initialDifficulty,
     onRender: frame => {
-      glassesMirror.textContent = frame
       if (even) void even.render(frame)
       emitState()
       updateRulesPanel()
@@ -126,6 +139,16 @@ async function bootstrap(): Promise<void> {
   // Phone-side buttons.
   newGameBtn.addEventListener('click', () => { runtime.handlePhoneEvent({ kind: 'new-game' }) })
   endGameBtn.addEventListener('click', () => { runtime.exitToMenu() })
+
+  // Difficulty selector: persists in localStorage, takes effect immediately
+  // (AI is stateless — no need to restart the hand). v0.1.8.
+  difficultySelect.addEventListener('change', () => {
+    const value = difficultySelect.value
+    if (value === 'easy' || value === 'medium' || value === 'hard') {
+      localStorage.setItem(DIFFICULTY_STORAGE_KEY, value)
+      runtime.handlePhoneEvent({ kind: 'set-difficulty', payload: value })
+    }
+  })
 
   // Dev-console handle.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

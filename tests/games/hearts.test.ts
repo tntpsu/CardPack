@@ -186,6 +186,32 @@ describe('heartsGame — phone "new-game" event', () => {
   })
 })
 
+describe('heartsGame — phone "set-difficulty" event (v0.1.8)', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('updates this.difficulty to a valid level', () => {
+    const h = heartsGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).difficulty).toBe('medium') // ctx default
+    h.handlePhoneEvent({ kind: 'set-difficulty', payload: 'hard' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).difficulty).toBe('hard')
+    h.handlePhoneEvent({ kind: 'set-difficulty', payload: 'easy' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).difficulty).toBe('easy')
+    h.destroy()
+  })
+
+  it('ignores an invalid value (defends against malformed phone events)', () => {
+    const h = heartsGame.init(makeCtx())
+    h.handlePhoneEvent({ kind: 'set-difficulty', payload: 'nightmare' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((h as any).difficulty).toBe('medium')
+    h.destroy()
+  })
+})
+
 describe('heartsGame — cursor movement (after advancing to human turn)', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
