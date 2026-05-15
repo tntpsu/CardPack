@@ -170,9 +170,10 @@ describe('euchreGame — call-trump phase (human turn)', () => {
   it('renders 3 callable suits plus Pass option, cursor on first suit', () => {
     const h = makeCallTrumpHandle()
     const body = h.render().body.join('\n')
-    // Callable: ♥ ♦ ♣ (spades forbidden) + Pass
+    // Callable: ♥ ♦ ♣ (spades forbidden) + Pass.
+    // ♦ renders as ◆ on glasses (G2 font has advW=0 for U+2666).
     expect(body).toContain('▶♥')
-    expect(body).toContain(' ♦')
+    expect(body).toContain(' ◆')
     expect(body).toContain(' ♣')
     expect(body).toContain('Pass')
     h.destroy()
@@ -189,7 +190,7 @@ describe('euchreGame — call-trump phase (human turn)', () => {
     const h = makeCallTrumpHandle()
     h.handleGlassesInput({ kind: 'swipe-down' })
     let body = h.render().body.join('\n')
-    expect(body).toContain('▶♦')
+    expect(body).toContain('▶◆') // ♦ renders as ◆ on glasses
     h.handleGlassesInput({ kind: 'swipe-down' })
     h.handleGlassesInput({ kind: 'swipe-down' })
     body = h.render().body.join('\n')
@@ -259,6 +260,24 @@ describe('euchreGame — play phase (with trump set)', () => {
     expect(body).toContain('D:W')
     expect(body).toContain('Maker:E')
     expect(body).toContain('Up:J♥')
+    h.destroy()
+  })
+
+  it('v0.2.2: diamond suit renders as ◆ (not ♦) on glasses', () => {
+    // Field-feedback bug: U+2666 (♦) has advW=0 in G2 firmware font and
+    // displays as a blank cell. Platform's SUIT_GLYPH maps ♦ → ◆. Test
+    // that the wrapper routes every suit display through it.
+    const h = makePlayHandle()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = (h as any).state
+    s.trump = '♦'
+    s.upCard = { rank: 'A', suit: '♦' }
+    const body = h.render().body.join('\n')
+    expect(body).toContain('Trump:◆')
+    expect(body).toContain('Up:A◆')
+    // No raw ♦ should leak through — that would be invisible on glasses.
+    expect(body).not.toContain('Trump:♦')
+    expect(body).not.toContain('Up:A♦')
     h.destroy()
   })
 

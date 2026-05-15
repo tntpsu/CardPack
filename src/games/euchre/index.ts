@@ -24,7 +24,8 @@ import type {
   Game, GameHandle, GlassesFrame, GlassesGesture, PhoneEvent, PlatformContext,
 } from 'even-card-platform'
 import {
-  renderHand, renderPlusTrick, sortBySuit,
+  renderCard as platformRenderCard,
+  renderHand, renderPlusTrick, sortBySuit, SUIT_GLYPH,
 } from 'even-card-platform'
 import type { Card as PlatformCard } from 'even-card-platform'
 
@@ -135,7 +136,7 @@ class EuchreHandle implements GameHandle {
 
   private renderHandEnd(): GlassesFrame {
     const s = this.state
-    const trumpDisplay = s.trump ? s.trump : '?'
+    const trumpDisplay = s.trump ? SUIT_GLYPH[s.trump] : '?'
     return {
       score: this.scoreString(),
       body: [
@@ -149,7 +150,7 @@ class EuchreHandle implements GameHandle {
 
   private renderOrderUp(): GlassesFrame {
     const s = this.state
-    const upCardDisplay = `${s.upCard.rank}${s.upCard.suit}`
+    const upCardDisplay = platformRenderCard(s.upCard)
     const header = `Dealer:${s.dealer}  Up:${upCardDisplay}`
 
     if (s.turn !== HUMAN) {
@@ -183,7 +184,7 @@ class EuchreHandle implements GameHandle {
       score: this.scoreString(),
       body: [
         header,
-        `Order up ${s.upCard.suit}? (${role})`,
+        `Order up ${SUIT_GLYPH[s.upCard.suit]}? (${role})`,
         `${orderLabel}    ${passLabel}`,
         ...handLines,
       ],
@@ -193,7 +194,7 @@ class EuchreHandle implements GameHandle {
 
   private renderCallTrump(): GlassesFrame {
     const s = this.state
-    const upCardDisplay = `${s.upCard.rank}${s.upCard.suit}`
+    const upCardDisplay = platformRenderCard(s.upCard)
     const header = `Dealer:${s.dealer}  Up:${upCardDisplay}`
 
     const sortedHand = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
@@ -215,7 +216,7 @@ class EuchreHandle implements GameHandle {
     if (!isStickDealer) options.push({ kind: 'pass' })
     const cursor = ((this.cursor % options.length) + options.length) % options.length
     const labels = options.map((opt, i) => {
-      const text = opt.kind === 'suit' ? opt.suit : 'Pass'
+      const text = opt.kind === 'suit' ? SUIT_GLYPH[opt.suit] : 'Pass'
       return i === cursor ? `▶${text}` : ` ${text}`
     })
     return {
@@ -234,11 +235,11 @@ class EuchreHandle implements GameHandle {
 
   private renderPlay(): GlassesFrame {
     const s = this.state
-    const trump = s.trump ?? '?'
-    // Dealer / maker / upcard reference line. v0.2.1 — field feedback
-    // surfaced that during play you can't tell who's dealer, who called
-    // trump, and what the upcard was (relevant for "was it picked up").
-    const upDisplay = `${s.upCard.rank}${s.upCard.suit}`
+    // v0.2.2: route every glasses-side suit display through SUIT_GLYPH /
+    // renderCard — the G2 firmware font has advW=0 for U+2666 (♦), so
+    // raw ♦ renders as a blank cell.
+    const trump = s.trump ? SUIT_GLYPH[s.trump] : '?'
+    const upDisplay = platformRenderCard(s.upCard)
     const contextLine = `D:${s.dealer}  Maker:${s.maker ?? '?'}  Up:${upDisplay}`
     const tricksLine = `Trump:${trump}  Tricks ${s.tricks.NS}-${s.tricks.EW}`
 
