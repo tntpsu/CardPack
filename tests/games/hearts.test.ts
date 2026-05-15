@@ -195,8 +195,9 @@ describe('heartsGame — cursor movement (after advancing to human turn)', () =>
     const before = h.render().body.join('\n')
     h.handleGlassesInput({ kind: 'swipe-down' })
     const after = h.render().body.join('\n')
-    expect(before).toContain('▲')
-    expect(after).toContain('▲')
+    // v0.1.6: cursor is ▲ when active card is in row 1, ▼ when in row 2.
+    expect(before).toMatch(/[▲▼]/)
+    expect(after).toMatch(/[▲▼]/)
     expect(before).not.toBe(after)
     h.destroy()
   })

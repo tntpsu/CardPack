@@ -12,16 +12,15 @@ goes in the entry and the entry stays as a regression marker.
 
 ### Feedback
 
-1. **Cursor moves through hand row; should anchor at center, point ▲/▼ to
-   row.** The current 2-row hand layout puts a single `▲` glyph under
-   whichever card is selected; the cursor "floats" left/right as the user
-   swipes through cards. Hard to track on a small display. Proposed:
-   cursor stays at a fixed horizontal position (center) and flips ▲/▼ to
-   indicate which row holds the active card. Active card itself bracketed
-   `[X]` or otherwise distinguished. **Scope: platform-level
-   (`even-card-platform/src/hand.ts` renderHand). Affects every sister
-   card game.** Deferred from v0.1.5 — needs a design pass and explicit
-   opt-in vs flag-day decision for the suite.
+1. **Cursor moves through hand row; should anchor between rows, point ▲/▼
+   to row.** **Shipped in v0.1.6 (platform v0.1.1)** as `renderHand`'s
+   new `multiRowCursor: 'between'` default. The cursor sits between the
+   two card rows and flips ▲ (active card is in row above) or ▼ (active
+   card is in row below). Horizontal position still tracks the active
+   card's column so the user can scan visually. Legacy `multiRowCursor:
+   'below'` retained as an opt-out for sister apps that prefer the old
+   look. Output is 3 lines (row1, between-cursor, row2) instead of 3-4
+   under the old layout. Affected platform tests updated.
 
 2. **Auto-park cursor on first legal card when must-follow-suit.** When
    a trick has a lead suit and you have cards of that suit, the only
