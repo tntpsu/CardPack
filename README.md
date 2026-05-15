@@ -2,7 +2,7 @@
 
 Seven classic card games for [Even Realities G2 smart glasses](https://www.evenrealities.com), wrapped in one cohesive product.
 
-> **Status:** v0.1.6 — Hearts is playable on real glasses. Pre-Phase B (Spades / Euchre / Solitaire still to come). All four Phase A field-test (2026-05-15) UX changes are now shipped: auto-park cursor on must-follow-suit, running hand-points in score header (`S:N(+H)` format), double-tap to play to prevent accidental plays, and **cursor anchored between rows with ▲/▼ row indicator** (platform change in even-card-platform v0.1.1; benefits every multi-row game built on the platform). See the [shared platform](https://github.com/tntpsu/even-card-platform) for the visual + interaction contract every game obeys.
+> **Status:** v0.1.7 — Hearts is playable on real glasses. Pre-Phase B (Spades / Euchre / Solitaire still to come). v0.1.7 adds row-locking during AI turns / trick linger (no more pop 3 ↔ 2 lines as cursor disappears) via platform v0.1.2, and fixes the stale `[tap] play` controlHint to read `[2x] play` matching the v0.1.5 gesture swap. All four Phase A field-test (2026-05-15) UX changes are now shipped: auto-park cursor on must-follow-suit, running hand-points in score header (`S:N(+H)` format), double-tap to play to prevent accidental plays, and **cursor anchored between rows with ▲/▼ row indicator**. See the [shared platform](https://github.com/tntpsu/even-card-platform) for the visual + interaction contract every game obeys.
 
 ## Games (v1.0 planned)
 

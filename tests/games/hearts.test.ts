@@ -113,12 +113,13 @@ describe('heartsGame.init — initial render', () => {
     h.destroy()
   })
 
-  it('controlHint shows swipe+tap once it is the human\'s turn', () => {
+  it('controlHint shows swipe + 2x play once it is the human\'s turn (v0.1.7: was "tap", now "2x")', () => {
     const h = heartsGame.init(makeCtx())
     advanceUntilHumanTurn(h)
     const hint = h.render().controlHint
     expect(hint).toContain('swipe')
-    expect(hint).toContain('tap')
+    expect(hint).toContain('2x')
+    expect(hint).toContain('play')
     h.destroy()
   })
 

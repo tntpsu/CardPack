@@ -119,7 +119,7 @@ class HeartsHandle implements GameHandle {
         ...trickLines,
         ...handLines,
       ],
-      controlHint: showCursor ? '[swipe] sel  [tap] play' : '',
+      controlHint: showCursor ? '[swipe] sel  [2x] play' : '',
     }
   }
 
