@@ -78,13 +78,15 @@ describe('euchreGame.init — initial render', () => {
     h.destroy()
   })
 
-  it('initial phase is order-up; frame body mentions Dealer + Up:', () => {
+  it('initial phase is order-up; frame body shows plus-sign view + dealer marker + bracketed upcard', () => {
     const h = euchreGame.init(makeCtx())
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((h as any).state.phase).toBe('order-up')
     const body = h.render().body.join('\n')
-    expect(body).toContain('Dealer:')
-    expect(body).toContain('Up:')
+    // v0.3.0 plus-sign view: dealer position has (D) marker, upcard is
+    // bracketed in the middle of the W↔E row.
+    expect(body).toMatch(/\b[NSWE]\([^)]*D[^)]*\)/) // some position has D in its marker
+    expect(body).toMatch(/\[([2-9JQKA]|10)[♠♥◆♣]\]/) // bracketed upcard
     h.destroy()
   })
 })
@@ -260,6 +262,39 @@ describe('euchreGame — play phase (with trump set)', () => {
     expect(body).toContain('D:W')
     expect(body).toContain('Maker:E')
     expect(body).toContain('Up:J♥')
+    h.destroy()
+  })
+
+  it('v0.3.0: plus-sign bid view shows current bidder with ▶ marker', () => {
+    // Force a specific scenario: S is bidding, W is dealer, no passes yet.
+    const h = euchreGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const internal: any = (h as any)
+    internal.state.phase = 'order-up'
+    internal.state.dealer = 'W'
+    internal.state.turn = 'S'
+    internal.state.passes = 0
+    const body = h.render().body.join('\n')
+    // W has (D), S has (me,▶), N has no marker, E has no marker
+    expect(body).toContain('W(D)')
+    expect(body).toContain('S(me,▶)')
+    h.destroy()
+  })
+
+  it('v0.3.0: plus-sign bid view shows passed players with — marker', () => {
+    // Dealer = E. Bidding order: S → W → N → E. After 2 passes, S and W have passed.
+    const h = euchreGame.init(makeCtx())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const internal: any = (h as any)
+    internal.state.phase = 'order-up'
+    internal.state.dealer = 'E'
+    internal.state.turn = 'N'
+    internal.state.passes = 2
+    const body = h.render().body.join('\n')
+    expect(body).toContain('S(me,—)')
+    expect(body).toContain('W(—)')
+    expect(body).toContain('N(▶)')
+    expect(body).toContain('E(D)')
     h.destroy()
   })
 

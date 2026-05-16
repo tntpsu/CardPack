@@ -2,7 +2,7 @@
 
 Seven classic card games for [Even Realities G2 smart glasses](https://www.evenrealities.com), wrapped in one cohesive product.
 
-> **Status:** v0.2.1 — Phase B field-test fixes. v0.2.1 lands four Euchre UX fixes: bid screens (order-up + call-trump) now show your hand below the picker (was missing, you couldn't tell what to bid on); play screen shows a `D:W  Maker:E  Up:J♥` context line so you know who dealt, who called trump, and what the upcard was (relevant for "did dealer pick it up"); single-row hand cursor row stays locked across cursor on/off cycles via platform v0.1.3 (was popping 1↔2 lines on Euchre, same fix shape as v0.1.7's multi-row row-lock); phone rules disclosure closed by default + `overscroll-behavior: contain` to reduce phone-side scroll artifacts during glasses gestures. Hearts unchanged. Phase B = Hearts + Euchre. See the [shared platform](https://github.com/tntpsu/even-card-platform) for the visual + interaction contract every game obeys.
+> **Status:** v0.3.0 — Euchre bid view rewrites to a plus-sign table. The four seats sit at a table with the upcard bracketed in the middle (`[J◆]`), and per-position markers (`(D)` dealer, `(▶)` currently bidding, `(—)` passed, `(me)` you) make it obvious whose turn it is, who's dealer, and who's already out. Position letters are letter-anchored at the center column so the cross stays visually square regardless of marker width (platform v0.2.0). Order/Pass toggle and suit picker remain as a line below the plus-sign. Hearts unchanged (play view already used the plus-sign trick layout). See the [shared platform](https://github.com/tntpsu/even-card-platform) for the visual + interaction contract every game obeys.
 
 ## Games (v1.0 planned)
 

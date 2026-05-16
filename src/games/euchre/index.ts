@@ -25,14 +25,14 @@ import type {
 } from 'even-card-platform'
 import {
   renderCard as platformRenderCard,
-  renderHand, renderPlusTrick, sortBySuit, SUIT_GLYPH,
+  renderHand, renderPlusBid, renderPlusTrick, sortBySuit, SUIT_GLYPH,
 } from 'even-card-platform'
 import type { Card as PlatformCard } from 'even-card-platform'
 
 import { aiBidRound1, aiBidRound2, aiPlay, DEFAULT_DIFFICULTY } from './ai'
 import type { Difficulty } from './ai'
 import {
-  callTrump, legalPlays, newGame, orderUp, passBid, playCard, startNewHand,
+  callTrump, legalPlays, newGame, orderUp, passBid, playCard, positionsAfter, startNewHand,
   teamOf,
   type Card, type GameState, type Position, type Suit, type Team, type Trick,
 } from './engine'
@@ -150,21 +150,12 @@ class EuchreHandle implements GameHandle {
 
   private renderOrderUp(): GlassesFrame {
     const s = this.state
-    const upCardDisplay = platformRenderCard(s.upCard)
-    const header = `Dealer:${s.dealer}  Up:${upCardDisplay}`
-
-    if (s.turn !== HUMAN) {
-      const sortedSouth = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
-      const handLines = renderHand({ hand: sortedSouth, cursorIdx: -1 })
-      return {
-        score: this.scoreString(),
-        body: [header, `${s.turn} is bidding…`, ...handLines],
-        controlHint: '',
-      }
-    }
 
     if (this.discardMode === 'pending') {
       // Dealer (S) ordered up — pick a discard from hand+upcard.
+      // Keep the linear layout here; the plus-sign isn't useful when
+      // bidding is decided and we're choosing a discard.
+      const header = `Dealer:${s.dealer}  Up:${platformRenderCard(s.upCard)}`
       const handPlusUp = [...s.hands[HUMAN] as readonly PlatformCard[], s.upCard as PlatformCard]
       const handLines = renderHand({ hand: handPlusUp, cursorIdx: this.cursor })
       return {
@@ -174,16 +165,31 @@ class EuchreHandle implements GameHandle {
       }
     }
 
-    // Bidding phase — toggle Order / Pass.
+    // Plus-sign bid view: who's at the table, who's dealer, who's bidding
+    // now, who's passed. Upcard in the middle. v0.3.0.
+    const plusLines = renderPlusBid({
+      upCard: s.upCard,
+      getMarker: pos => this.bidMarkerFor(pos),
+    })
+    const sortedHand = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
+    const handLines = renderHand({ hand: sortedHand, cursorIdx: -1 })
+
+    if (s.turn !== HUMAN) {
+      return {
+        score: this.scoreString(),
+        body: [...plusLines, ...handLines],
+        controlHint: '',
+      }
+    }
+
+    // Human's turn — Order / Pass toggle below the plus-sign.
     const role = s.dealer === HUMAN ? 'you are dealer — pick up' : 'tell dealer to'
     const orderLabel = this.cursor === 0 ? '▶Order' : ' Order'
     const passLabel = this.cursor === 1 ? '▶Pass' : ' Pass'
-    const sortedHand = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
-    const handLines = renderHand({ hand: sortedHand, cursorIdx: -1 })
     return {
       score: this.scoreString(),
       body: [
-        header,
+        ...plusLines,
         `Order up ${SUIT_GLYPH[s.upCard.suit]}? (${role})`,
         `${orderLabel}    ${passLabel}`,
         ...handLines,
@@ -194,23 +200,27 @@ class EuchreHandle implements GameHandle {
 
   private renderCallTrump(): GlassesFrame {
     const s = this.state
-    const upCardDisplay = platformRenderCard(s.upCard)
-    const header = `Dealer:${s.dealer}  Up:${upCardDisplay}`
 
+    // Plus-sign bid view: same as order-up but round 2 (upcard's suit
+    // is no longer eligible — but the upcard still sits in the middle
+    // as visual reference for what was passed on).
+    const plusLines = renderPlusBid({
+      upCard: s.upCard,
+      getMarker: pos => this.bidMarkerFor(pos),
+    })
     const sortedHand = sortBySuit(s.hands[HUMAN] as readonly PlatformCard[])
     const handLines = renderHand({ hand: sortedHand, cursorIdx: -1 })
 
     if (s.turn !== HUMAN) {
       return {
         score: this.scoreString(),
-        body: [header, `${s.turn} is calling…`, ...handLines],
+        body: [...plusLines, ...handLines],
         controlHint: '',
       }
     }
 
     const callable = SUIT_LIST.filter(x => x !== s.forbiddenTrumpRound2)
     const isStickDealer = s.dealer === HUMAN && s.passes === 3
-    // Options: callable suits, plus 'Pass' unless stick-the-dealer.
     const options: Array<{ kind: 'suit'; suit: Suit } | { kind: 'pass' }> = []
     for (const suit of callable) options.push({ kind: 'suit', suit })
     if (!isStickDealer) options.push({ kind: 'pass' })
@@ -222,7 +232,7 @@ class EuchreHandle implements GameHandle {
     return {
       score: this.scoreString(),
       body: [
-        header,
+        ...plusLines,
         'Call trump?',
         labels.join('  '),
         ...handLines,
@@ -486,6 +496,32 @@ class EuchreHandle implements GameHandle {
     return parts.join(',')
   }
 
+  /** Marker for the plus-sign bid view. v0.3.0.
+   *  (D)  — dealer
+   *  (▶)  — currently bidding
+   *  (—)  — passed in this round
+   *  (me) — South (you); always shown for identity
+   *  Combinations are comma-joined: S(me,D,▶) etc. */
+  private bidMarkerFor(pos: Position): string {
+    const s = this.state
+    const parts: string[] = []
+    if (pos === HUMAN) parts.push('me')
+    if (pos === s.dealer) parts.push('D')
+    if (pos === s.turn) parts.push('▶')
+    else if (this.hasPassedThisRound(pos)) parts.push('—')
+    return parts.join(',')
+  }
+
+  /** Has `pos` already passed in the current bidding round? Derived
+   *  from engine's `passes` count and the clockwise bidding order
+   *  starting at dealer+1. */
+  private hasPassedThisRound(pos: Position): boolean {
+    const s = this.state
+    if (s.passes === 0) return false
+    const order = positionsAfter(s.dealer) // [W,N,E,S] if dealer=S etc.
+    return order.slice(0, s.passes).includes(pos)
+  }
+
   /** Reposition cursor to a legal card in the sorted hand. Idempotent;
    *  no-op when current cursor is already on a legal card or when it's
    *  not the human's turn / not in play phase. Used after AI plays. */
@@ -573,6 +609,19 @@ const EUCHRE_RULES_HTML = `
     <li><code>Us:N(+T)  Them:N(+T)</code> — game score and tricks-this-hand</li>
     <li><code>Trump:♠</code> — current trump suit; <code>?</code> until bidding completes</li>
     <li>Cards in <code>(parens)</code> in your hand = illegal play right now</li>
+  </ul>
+
+  <h3 style="margin: 1rem 0 .25rem; font-size: 1rem;">Plus-sign bid view (markers)</h3>
+  <p style="margin: 0 0 .5rem;">During bidding, the four seats sit at a table with the upcard in the middle:</p>
+  <pre style="margin: 0 0 .5rem; padding: .5rem .75rem; background: #f5f5f5; border-radius: 4px; font-family: ui-monospace, monospace; font-size: .9em;">           N
+   W(D)   [J◆]   E(▶)
+           S(me)</pre>
+  <ul style="margin: 0 0 .5rem; padding-left: 1.25rem;">
+    <li><code>(D)</code> — dealer</li>
+    <li><code>(▶)</code> — currently bidding (this marker migrates around the table)</li>
+    <li><code>(—)</code> — passed in this round</li>
+    <li><code>(me)</code> — you (always South)</li>
+    <li>North is always your partner; West and East are opponents.</li>
   </ul>
 `
 
