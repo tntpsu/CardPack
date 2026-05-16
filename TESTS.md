@@ -1,16 +1,16 @@
 # TESTS — coverage matrix
 
-Last updated: 2026-05-15 (v0.2.0 — Phase B: Euchre joins Hearts in the pack)
+Last updated: 2026-05-15 (v0.3.0 — Euchre bid view → plus-sign table)
 
 This is the build gate for Card Pack. Every feature gets a row, every cell
 gets either a test reference, `manual:<reason>`, or `skip:<reason>`. Empty
 cells block the next ship. See `~/.claude/skills/coverage-matrix/SKILL.md`
 for the full discipline.
 
-The shared platform's coverage (93 unit tests in `even-card-platform`) is
-tracked in its own `TESTS.md`. Cells here that say `platform:<name>` reference
-tests that already pass in that repo. Euchre engine + AI (109 + 284 + 73 unit
-tests in `~/Documents/Euchre`) are tested upstream — cells that say
+The shared platform's coverage (101 unit tests in `even-card-platform` as of
+v0.2.0) is tracked in its own `TESTS.md`. Cells here that say `platform:<name>`
+reference tests that already pass in that repo. Euchre engine + AI (109 + 284
++ 73 unit tests in `~/Documents/Euchre`) are tested upstream — cells that say
 `engine:euchre` reference tests in that repo.
 
 ## Use case × failure mode
@@ -54,7 +54,7 @@ Columns dropped as n/a:
 | BLE write serialization (no crash) | platform:runtime + manual:hw | n/a | n/a | e2e:8 (gesture spam) | manual |
 | App icon renders in portal | manual:DOM | n/a | n/a | n/a | n/a |
 | Euchre: module metadata (id, name, glyph, category) | unit:euchre:module-metadata | n/a | n/a | n/a | n/a |
-| Euchre: init renders Order-up phase with Dealer + Up: header | unit:euchre:init-render | n/a | n/a | n/a | n/a |
+| Euchre: init renders plus-sign bid view with (D) marker + bracketed upcard (v0.3.0) | unit:euchre:init-render | n/a | n/a | n/a | n/a |
 | Euchre: order-up bidding — Order/Pass toggle cursor | unit:euchre:order-up-toggle | n/a | n/a | n/a | n/a |
 | Euchre: order-up double-tap on Pass → state.passes++ | unit:euchre:order-up-pass | n/a | n/a | n/a | n/a |
 | Euchre: call-trump renders 3 callable suits + Pass | unit:euchre:call-trump-render | n/a | n/a | n/a | n/a |
@@ -72,6 +72,14 @@ Columns dropped as n/a:
 | Euchre: cursor parks on first legal card (must-follow) | unit:euchre:cursor-park | n/a | n/a | n/a | n/a |
 | Euchre: destroy() doesn't throw + cancels timers | unit:euchre:destroy + unit:euchre:destroy-cancels-timers | n/a | n/a | n/a | n/a |
 | Euchre: team-score format "Us:N(+T)  Them:N(+T)" | unit:euchre:initial-score | n/a | n/a | n/a | n/a |
+| Euchre: bid screens show your hand below the picker (v0.2.1) | unit:euchre:order-up-shows-hand + unit:euchre:call-trump-shows-hand | n/a | n/a | n/a | n/a |
+| Euchre: play render shows D + Maker + Up context line (v0.2.1) | unit:euchre:play-context-line | n/a | n/a | n/a | n/a |
+| Euchre: glasses-side suit displays route through SUIT_GLYPH (diamond → ◆) (v0.2.2) | unit:euchre:diamond-glyph | n/a | n/a | n/a | n/a |
+| Euchre: plus-sign bid view marks current bidder with (▶) (v0.3.0) | unit:euchre:plus-bid-current-bidder | n/a | n/a | n/a | n/a |
+| Euchre: plus-sign bid view marks passed players with (—) (v0.3.0) | unit:euchre:plus-bid-passed-marker | n/a | n/a | n/a | n/a |
+| Plus-sign primitives: N + S letter-anchored at center column (v0.3.0 / platform v0.2.0) | platform:plus-bid:letter-alignment | n/a | n/a | n/a | n/a |
+| Plus-sign bid: upcard bracketed `[J♥]` in W↔E row center (v0.3.0) | platform:plus-bid:upcard-rendered | n/a | n/a | n/a | n/a |
+| Plus-sign bid: multi-marker stacking (me,D,▶) (v0.3.0) | platform:plus-bid:multi-marker | n/a | n/a | n/a | n/a |
 | Two-game launcher: Hearts + Euchre both registered | manual:hw (launcher logic in platform; integration check on real glasses) | n/a | n/a | n/a | n/a |
 | Rules pane swaps on active game change | skip:one-line-wiring (`game?.renderPhoneRules?.()` in main.ts; per-game HTML covered by unit:hearts:rules + unit:euchre:rules) | n/a | n/a | n/a | n/a |
 
@@ -94,14 +102,17 @@ Columns dropped as n/a:
 - [x] License/NOTICE present
 
 ### Unit (Vitest, CardPack-side)
-- **60 tests across 2 files** — `tests/games/hearts.test.ts` (35) and
-  `tests/games/euchre.test.ts` (25). Euchre wrapper tests cover module
+- **66 tests across 2 files** — `tests/games/hearts.test.ts` (35) and
+  `tests/games/euchre.test.ts` (31). Euchre wrapper tests cover module
   metadata, init render, order-up bidding (toggle, Pass, single-tap no-op),
   call-trump render + cycle + confirm + stick-the-dealer, play-phase
   render + gestures, hand-end + game-end render, phone new-game and
-  set-difficulty events, cursor parking, and destroy semantics. Engine +
-  AI correctness is covered upstream in `~/Documents/Euchre/tests/` and
-  not duplicated here.
+  set-difficulty events, cursor parking, destroy semantics, hand
+  visibility on bid screens (v0.2.1), play context line (v0.2.1),
+  diamond suit glyph routing (v0.2.2), and plus-sign bid view markers
+  ((▶) on current bidder, (—) on passed) (v0.3.0). Engine + AI
+  correctness is covered upstream in `~/Documents/Euchre/tests/` and not
+  duplicated here.
 - **35 tests** in `tests/games/hearts.test.ts`. Cover module metadata,
   initial render frame shape, score format, plus-trick markers, controlHint,
   destroy(), cursor movement (incl. wrap), gesture execution, phone
