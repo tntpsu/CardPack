@@ -1,9 +1,8 @@
 // Card Pack entry point. Wires the Even Hub bridge to the platform
 // Runtime, registers each game module, and renders the launcher.
 //
-// Phase A: Hearts is the only registered game (reference module).
-// Spades, Euchre, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in
-// Phase B+.
+// Registered: Hearts, Euchre, Spades, Crazy Eights, Gin Rummy, Cribbage,
+// Oh Hell, Bridge. Solitaire ships standalone (image-rendered — see ROADMAP).
 
 import { Runtime } from 'even-card-platform'
 import type { GlassesGesture } from 'even-card-platform'
@@ -11,6 +10,12 @@ import type { GlassesGesture } from 'even-card-platform'
 import { connectEvenRuntime, type EvenRuntime } from './even'
 import { heartsGame } from './games/hearts'
 import { euchreGame } from './games/euchre'
+import { spadesGame } from './games/spades'
+import { crazy8Game } from './games/crazy8'
+import { ginRummyGame } from './games/ginrummy'
+import { cribbageGame } from './games/cribbage'
+import { ohHellGame } from './games/ohhell'
+import { bridgeGame } from './games/bridge'
 
 declare const __APP_VERSION__: string
 
@@ -22,7 +27,7 @@ if (!root) throw new Error('App root missing')
 root.innerHTML = `
   <main style="font-family: system-ui; padding: 1rem; max-width: 720px; margin: 0 auto; color: #232323; overflow-x: hidden; overscroll-behavior: contain;">
     <h1 style="margin: 0 0 .25rem 0;">Card Pack <span style="font-size: .55em; color: #7b7b7b; font-weight: 400;">v${__APP_VERSION__}</span></h1>
-    <p style="color: #7b7b7b; margin: 0 0 1rem 0;">Seven classic card games. One tap to play.</p>
+    <p style="color: #7b7b7b; margin: 0 0 1rem 0;">Eight classic card games. One tap to play.</p>
     <p id="status" style="color: #7b7b7b; font-size: .9em; margin: 0 0 1rem 0;">Connecting…</p>
 
     <section style="margin-top: 1rem; margin-bottom: 1rem;">
@@ -49,7 +54,7 @@ root.innerHTML = `
 
     <section style="margin-top: 1rem;">
       <h2 style="font-size: 1.1em; margin: 1rem 0 .5rem 0;">In the pack</h2>
-      <p style="color:#555;">Phase B: Hearts + Euchre. Spades, Solitaire, Crazy Eights, Cribbage, Gin Rummy land in Phase C+.</p>
+      <ul id="pack-list" style="list-style: none; padding: 0; margin: 0; color: #333;"></ul>
     </section>
   </main>
 `
@@ -58,6 +63,7 @@ const statusEl = document.querySelector<HTMLParagraphElement>('#status')!
 const newGameBtn = document.querySelector<HTMLButtonElement>('#new-game')!
 const endGameBtn = document.querySelector<HTMLButtonElement>('#end-game')!
 const rulesBody = document.querySelector<HTMLDivElement>('#rules-body')!
+const packList = document.querySelector<HTMLUListElement>('#pack-list')!
 const difficultySelect = document.querySelector<HTMLSelectElement>('#difficulty')!
 
 const DIFFICULTY_STORAGE_KEY = 'cardpack:difficulty'
@@ -83,15 +89,18 @@ async function bootstrap(): Promise<void> {
   } : null
 
   // State-log emission for the regression harness. Format:
-  //   [cardpack:state] view=launcher
+  //   [cardpack:state] view=launcher focus=hearts
   //   [cardpack:state] view=hearts
-  // Matches the pattern used by Hands Free Lift / Hearts / Spades —
-  // scripts/regression.mjs polls the simulator's /api/console and asserts
-  // against these lines.
+  // In the launcher we append `focus=<cursored game id>` so the e2e can
+  // swipe the cursor to a target game deterministically (regardless of the
+  // persisted last-played start position) before launching it. In a game,
+  // just `view=<id>`. scripts/regression.mjs polls /api/console for these.
   let lastState = ''
   function emitState(): void {
-    const v = runtime.currentGameId() ?? 'launcher'
-    const next = `view=${v}`
+    const inGame = runtime.currentGameId()
+    const next = inGame
+      ? `view=${inGame}`
+      : `view=launcher focus=${runtime.focusedGameId() ?? 'none'}`
     if (next === lastState) return
     lastState = next
     // eslint-disable-next-line no-console
@@ -99,7 +108,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const runtime = new Runtime({
-    games: [heartsGame, euchreGame],
+    games: [heartsGame, euchreGame, spadesGame, crazy8Game, ginRummyGame, cribbageGame, ohHellGame, bridgeGame],
     bridge,
     packName: 'CARD PACK',
     difficulty: initialDifficulty,
@@ -110,19 +119,31 @@ async function bootstrap(): Promise<void> {
     },
   })
 
-  /** Refresh the "How to play" disclosure to match the currently-cursored
-   *  (in launcher) or active (in game) module. v0.1.x has only Hearts;
-   *  when Spades/Euchre/etc land in Phase B+, this picks the right one
-   *  based on `runtime.currentGameId()` ?? cursored game.
+  /** Refresh the "How to play" disclosure to match the active game, or —
+   *  when in the launcher — the game the glasses cursor is currently on.
+   *  Driven off `runtime.focusedGameId()`, so swiping through the launcher
+   *  on the glasses updates the phone rules live (this runs on every
+   *  onRender). Falls back to the first registered game only when nothing
+   *  is focused (empty pack).
    *
    *  Per-game rules come from each Game module's optional
    *  renderPhoneRules() — static HTML, lives on Game (not GameHandle). */
-  const REGISTERED_GAMES = [heartsGame, euchreGame]
+  const REGISTERED_GAMES = [heartsGame, euchreGame, spadesGame, crazy8Game, ginRummyGame, cribbageGame, ohHellGame, bridgeGame]
   function updateRulesPanel(): void {
-    const activeId = runtime.currentGameId()
-    const game = REGISTERED_GAMES.find(g => g.id === activeId) ?? REGISTERED_GAMES[0]
-    rulesBody.innerHTML = game?.renderPhoneRules?.() ?? '<p>No rules available.</p>'
+    const focusedId = runtime.focusedGameId()
+    const game = REGISTERED_GAMES.find(g => g.id === focusedId) ?? REGISTERED_GAMES[0]
+    const heading = game
+      ? `<h3 style="margin: 0 0 .5rem 0; font-size: 1.05em;">${game.name}</h3>`
+      : ''
+    const rules = game?.renderPhoneRules?.() ?? '<p>No rules available.</p>'
+    rulesBody.innerHTML = heading + rules
   }
+
+  // Populate the "In the pack" list from the registered games, so it
+  // stays accurate as games land rather than describing build phases.
+  packList.innerHTML = REGISTERED_GAMES.map(g =>
+    `<li style="margin: 0 0 .35rem 0;"><strong>${g.name}</strong> — ${g.shortDesc}</li>`,
+  ).join('')
 
   await runtime.init()
   statusEl.textContent = even ? 'Glasses connected.' : 'Browser preview — no glasses bridge.'

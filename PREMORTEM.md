@@ -98,3 +98,50 @@ A round of Euchre on real glasses to confirm:
 - The 3-suit picker with Pass cycles cleanly.
 - Score format "Us:N(+T)  Them:N(+T)" fits the 576 px display in worst case.
 - Bidding phases pace correctly (not too fast, not too slow).
+
+---
+
+## Swipe-bounce on the display — two-layer event capture
+
+**2026-06-06** — field report: "the screen *bounces* when I scroll to move
+the pointer to a different card."
+
+### Diagnosis
+
+Not a layout-count bug. The Hearts play frame is 9 lines × 27 px ≈ 243 px,
+inside the 288 px container — the hand renderer already locks line count
+across the turn cycle, so nothing pops as the cursor moves. The bounce is
+**firmware overscroll rubber-band**: `even.ts` used a *single* full-screen
+text container that was BOTH the event-capture layer AND the visible
+content. On the G2, a swipe on a text-capture container fires as
+`SCROLL_TOP`/`SCROLL_BOTTOM` (that's how we receive swipes) and the firmware
+tries to scroll the content it's drawing. With content that fits, there's no
+scroll range, so the gesture springs back = the visible bounce.
+
+### Fix shipped (v0.3.3) — needs on-glasses confirmation
+
+Split into two full-screen text containers per the glasses-ui **Image-Based
+App Pattern**:
+- `events` (id 2): `content: ' '`, `isEventCapture: 1`, no border/padding.
+  Invisible. Catches every gesture; nothing scrollable, so any overscroll
+  has nothing to render.
+- `display` (id 1): `isEventCapture: 0`, holds the composed frame, updated
+  via `textContainerUpgrade`. Receives no input → firmware never scrolls it
+  → cannot bounce.
+
+**Unverified assumption (device-only):** that swipes still arrive as
+`SCROLL_TOP`/`SCROLL_BOTTOM` from a single-space capture layer. The launcher
+already relies on direction-based swipe reporting with content that fits, so
+this should hold — but confirm on hardware:
+- Swipe up/down still moves the hand cursor (input not dead).
+- The visible frame no longer bounces/springs on each swipe.
+- Tap / double-tap still register (they route via `sysEvent`, unaffected).
+- No second container pushed the page past the 8-text-container / 12-total
+  limit (only 2 used — fine).
+
+If swipes turn out NOT to fire from the empty capture layer, fall back:
+either give `events` a tall (>288 px worth) invisible content so it has real
+scroll range, or move to a list-container for the launcher + a paginated
+page-container for play. This is the standalone-`even.ts` shared pattern, so
+a confirmed fix should be mirrored into `~/Documents/Hearts/src/even.ts`
+(ask first — `even.ts` is not in a formal sync set).

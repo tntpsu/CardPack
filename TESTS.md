@@ -1,6 +1,6 @@
 # TESTS — coverage matrix
 
-Last updated: 2026-05-15 (v0.3.0 — Euchre bid view → plus-sign table)
+Last updated: 2026-06-10 (v0.4.0 — Bridge added; 284 unit + 72 e2e)
 
 This is the build gate for Card Pack. Every feature gets a row, every cell
 gets either a test reference, `manual:<reason>`, or `skip:<reason>`. Empty
@@ -82,6 +82,114 @@ Columns dropped as n/a:
 | Plus-sign bid: multi-marker stacking (me,D,▶) (v0.3.0) | platform:plus-bid:multi-marker | n/a | n/a | n/a | n/a |
 | Two-game launcher: Hearts + Euchre both registered | manual:hw (launcher logic in platform; integration check on real glasses) | n/a | n/a | n/a | n/a |
 | Rules pane swaps on active game change | skip:one-line-wiring (`game?.renderPhoneRules?.()` in main.ts; per-game HTML covered by unit:hearts:rules + unit:euchre:rules) | n/a | n/a | n/a | n/a |
+| Spades: module metadata (id, name, glyph, category) | unit:spades:module-metadata | n/a | n/a | n/a | n/a |
+| Spades: renderPhoneRules covers bid/nil/trump/broken | unit:spades:rules | n/a | n/a | n/a | n/a |
+| Spades: init phase=bid, score "Us:0  Them:0" | unit:spades:init-bid-phase | n/a | n/a | n/a | n/a |
+| Spades: bid view shows others' bids + hand + selector | unit:spades:bid-render | n/a | n/a | n/a | n/a |
+| Spades: bid selector shows "nil (0)" at zero | unit:spades:bid-nil-label | n/a | n/a | n/a | n/a |
+| Spades: swipe dials bid, clamped 0–13 | unit:spades:bid-dial-clamp | unit:spades:bid-dial-clamp (clamp branches) | n/a | n/a | n/a |
+| Spades: double-tap confirms bid → phase=play | unit:spades:bid-confirm | n/a | n/a | n/a | n/a |
+| Spades: AI bids run on timer until human's turn | unit:spades:ai-bids-timer | n/a | n/a | n/a | n/a |
+| Spades: play view shows plus-trick + hand + tricks/bid score | unit:spades:play-render | n/a | n/a | n/a | n/a |
+| Spades: double-tap on legal card plays it | unit:spades:play-legal | n/a | n/a | unit:spades:play-legal | n/a |
+| Spades: double-tap on illegal (must-follow) is no-op | n/a | unit:spades:play-illegal-noop | n/a | n/a | n/a |
+| Spades: single-tap mid-play is a no-op | unit:spades:single-tap-noop | n/a | n/a | n/a | n/a |
+| Spades: swipe wraps the hand cursor | unit:spades:cursor-wrap | n/a | n/a | n/a | n/a |
+| Spades: hand-end render + double-tap → next hand | unit:spades:hand-end | n/a | n/a | n/a | n/a |
+| Spades: game-end YOU WIN / THEM WIN + double-tap exits | unit:spades:game-end-you + unit:spades:game-end-them | n/a | n/a | n/a | n/a |
+| Spades: phone new-game resets to bid + score 0 | unit:spades:phone-new-game | unit:spades:phone-unknown-event | n/a | n/a | n/a |
+| Spades: phone set-difficulty updates tier | unit:spades:phone-set-difficulty | n/a | n/a | n/a | n/a |
+| Spades: destroy() doesn't throw + cancels timers | unit:spades:destroy | n/a | n/a | n/a | n/a |
+| Spades engine: deals 13 to each seat | unit:spades:engine-deal | n/a | n/a | n/a | n/a |
+| Spades engine: bid W→N→E→S then flips to play | unit:spades:engine-bid-transition | n/a | n/a | n/a | n/a |
+| Spades engine: spades can't lead until broken | unit:spades:engine-spade-lock | n/a | n/a | n/a | n/a |
+| Spades engine: must follow lead suit | unit:spades:engine-follow-suit | n/a | n/a | n/a | n/a |
+| Spades engine: trick winner (high spade / high lead) | unit:spades:engine-winner-spade + unit:spades:engine-winner-lead | n/a | n/a | n/a | n/a |
+| Spades scoring: made bid + overtricks/bags | unit:spades:engine-score-made | n/a | n/a | n/a | n/a |
+| Spades scoring: successful nil (+100 over partner's made bid) | unit:spades:engine-score-nil | n/a | n/a | n/a | n/a |
+| Spades scoring: missed bid (set, −10/bid) | unit:spades:engine-score-miss | n/a | n/a | n/a | n/a |
+| Spades scoring: 10-bag overflow −100 penalty + carry | unit:spades:engine-score-bag-overflow | n/a | n/a | n/a | n/a |
+| Spades scoring: failed nil (−100, stray trick bags partner) | unit:spades:engine-score-failed-nil | n/a | n/a | n/a | n/a |
+| Crazy Eights: module metadata (id, name, glyph, category) | unit:crazy8:module-metadata | n/a | n/a | n/a | n/a |
+| Crazy Eights: renderPhoneRules covers wild/draw/scoring | unit:crazy8:rules | n/a | n/a | n/a | n/a |
+| Crazy Eights: init play phase, per-seat score row | unit:crazy8:init-play | n/a | n/a | n/a | n/a |
+| Crazy Eights: play view shows top + active suit + stock + hand | unit:crazy8:play-render | n/a | n/a | n/a | n/a |
+| Crazy Eights: double-tap on a legal card plays it | unit:crazy8:play-legal | n/a | n/a | unit:crazy8:play-legal | n/a |
+| Crazy Eights: illegal card → must-draw (double-tap draws, not plays) | n/a | unit:crazy8:play-illegal-draws | n/a | n/a | n/a |
+| Crazy Eights: single-tap mid-play is a no-op | unit:crazy8:single-tap-noop | n/a | n/a | n/a | n/a |
+| Crazy Eights: 8 opens suit picker, commits with chosen suit | unit:crazy8:eight-suit-pick | n/a | n/a | n/a | n/a |
+| Crazy Eights: no legal card → must-draw view; draw from stock | unit:crazy8:must-draw | n/a | n/a | n/a | n/a |
+| Crazy Eights: stuck + empty stock → pass advances turn | n/a | unit:crazy8:pass-on-empty-stock | n/a | n/a | n/a |
+| Crazy Eights: hand-end names who went out; double-tap deals | unit:crazy8:hand-end | n/a | n/a | n/a | n/a |
+| Crazy Eights: game-end YOU WIN / SEAT WINS + double-tap exits | unit:crazy8:game-end-you + unit:crazy8:game-end-seat | n/a | n/a | n/a | n/a |
+| Crazy Eights: phone new-game resets; set-difficulty; unknown | unit:crazy8:phone-new-game + unit:crazy8:phone-set-difficulty | unit:crazy8:phone-unknown | n/a | n/a | n/a |
+| Crazy Eights: destroy() doesn't throw | unit:crazy8:destroy | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: deal 5 each + stock + 1 discard | unit:crazy8:engine-deal | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: legal = suit / rank / any-8 | unit:crazy8:engine-legal | unit:crazy8:engine-legal | n/a | n/a | n/a |
+| Crazy Eights engine: 8 sets the declared suit | unit:crazy8:engine-eight-suit | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: drawCard pulls from stock (turn unchanged) | unit:crazy8:engine-draw | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: reshuffle discard into empty stock | unit:crazy8:engine-reshuffle | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: draw null when stock + recycle exhausted | n/a | unit:crazy8:engine-draw-null | n/a | n/a | n/a |
+| Crazy Eights engine: card/hand penalty values | unit:crazy8:engine-penalty | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: going out ends hand + charges leftovers | unit:crazy8:engine-endhand | n/a | n/a | n/a | n/a |
+| Crazy Eights engine: hand to target ends the game (lowest wins) | unit:crazy8:engine-gameend | n/a | n/a | n/a | n/a |
+| **E2E per game**: launch → navigate launcher → enter → play, no crash, render survives | e2e:hearts + e2e:euchre + e2e:spades + e2e:crazy8 | n/a | n/a | e2e:* (gesture spam, all 4) | e2e:* (render survives) |
+| Gin Rummy: module metadata + rules HTML | unit:gin:metadata | n/a | n/a | n/a | n/a |
+| Gin Rummy: init draw phase, score "You:0  Opp:0" | unit:gin:init | n/a | n/a | n/a | n/a |
+| Gin Rummy: draw view (stock/take) swipe + double-tap draws | unit:gin:draw-view | n/a | n/a | unit:gin:draw-view | n/a |
+| Gin Rummy: discard view shows hand + KNOCK affordance | unit:gin:discard-view | n/a | n/a | n/a | n/a |
+| Gin Rummy: discard passes to opponent; AI turn on timer | unit:gin:discard-passes-ai | n/a | n/a | n/a | n/a |
+| Gin Rummy: KNOCK item ends the hand | unit:gin:knock-item | n/a | n/a | n/a | n/a |
+| Gin Rummy: single-tap mid-turn no-op | unit:gin:single-tap-noop | n/a | n/a | n/a | n/a |
+| Gin Rummy: hand-end render + double-tap → next hand | unit:gin:hand-end | n/a | n/a | n/a | n/a |
+| Gin Rummy: game-end YOU/OPPONENT WINS + double-tap exits | unit:gin:game-end | n/a | n/a | n/a | n/a |
+| Gin Rummy: phone new-game/set-difficulty/unknown | unit:gin:phone | unit:gin:phone (unknown) | n/a | n/a | n/a |
+| Gin Rummy engine: meld solver (run+set, gin, ace-low, min-deadwood) | unit:gin:solver | n/a | n/a | n/a | n/a |
+| Gin Rummy engine: deal/draw-stock/draw-discard/discard | unit:gin:moves | n/a | n/a | n/a | n/a |
+| Gin Rummy scoring: knock diff / gin+25 / undercut+25 / wash | unit:gin:score-knock + unit:gin:score-gin + unit:gin:score-undercut + unit:gin:score-wash | n/a | n/a | n/a | n/a |
+| Cribbage: module metadata + rules HTML | unit:crib:metadata | n/a | n/a | n/a | n/a |
+| Cribbage: init discard phase, score "You:0  Opp:0", lay-2 prompt | unit:crib:init | n/a | n/a | n/a | n/a |
+| Cribbage: pick 2 + confirm → lay away, cut, enter play | unit:crib:discard-confirm | n/a | n/a | unit:crib:discard-confirm | n/a |
+| Cribbage: single-tap no-op in discard | unit:crib:single-tap-noop | n/a | n/a | n/a | n/a |
+| Cribbage: show view steps on double-tap | unit:crib:show-step | n/a | n/a | n/a | n/a |
+| Cribbage: hand-end → next hand swaps dealer | unit:crib:next-hand-swap | n/a | n/a | n/a | n/a |
+| Cribbage: game-end banner + exit; phone events; destroy | unit:crib:game-end + unit:crib:phone | unit:crib:phone (unknown) | n/a | n/a | n/a |
+| Cribbage show scorer: perfect 29 | unit:crib:show-29 | n/a | n/a | n/a | n/a |
+| Cribbage show scorer: pairs / runs / double-run / fifteens | unit:crib:show-pair + unit:crib:show-run + unit:crib:show-doublerun + unit:crib:show-fifteens | n/a | n/a | n/a | n/a |
+| Cribbage show scorer: flush 4/5, hand vs crib | unit:crib:show-flush4 + unit:crib:show-flush5 | n/a | n/a | n/a | n/a |
+| Cribbage show scorer: nobs | unit:crib:show-nobs | n/a | n/a | n/a | n/a |
+| Cribbage pegging scores: 15 / 31 / pair / trips / run / pair≠run | unit:crib:peg-* | n/a | n/a | n/a | n/a |
+| Cribbage lifecycle: deal / discard→cut / advanceShow stages | unit:crib:newgame + unit:crib:cut + unit:crib:advanceshow | n/a | n/a | n/a | n/a |
+| Cribbage self-play: 30 full hands terminate, sane scores, all cards pegged | unit:crib:selfplay (×30 seeds) | n/a | n/a | n/a | n/a |
+| Six-game launcher: …+ Gin Rummy + Cribbage launchable | e2e:* (each navigated via focus= marker and launched) | n/a | n/a | n/a | n/a |
+| Oh Hell: metadata + rules | unit:ohhell:metadata | n/a | n/a | n/a | n/a |
+| Oh Hell: init bid phase, S bids first, per-seat score | unit:ohhell:init | n/a | n/a | n/a | n/a |
+| Oh Hell: bid view shows trump + selector; confirm advances | unit:ohhell:bid-view | n/a | n/a | n/a | n/a |
+| Oh Hell: bid picker skips dealer-hook value (human deals) | unit:ohhell:hook-picker | n/a | n/a | n/a | n/a |
+| Oh Hell: AI bids on timer until human leads | unit:ohhell:ai-bids | n/a | n/a | n/a | n/a |
+| Oh Hell: hand-end → next round (round++, dealer swap); game-end exits | unit:ohhell:next-round + unit:ohhell:game-end | n/a | n/a | n/a | n/a |
+| Oh Hell: single-tap no-op; phone events; destroy | unit:ohhell:single-tap + unit:ohhell:phone | unit:ohhell:phone (unknown) | n/a | n/a | n/a |
+| Oh Hell engine: trump beats non-trump / highest trump / highest lead | unit:ohhell:winner-trump + unit:ohhell:winner-lead | n/a | n/a | n/a | n/a |
+| Oh Hell engine: must follow suit; wouldWinTrick | unit:ohhell:follow + unit:ohhell:wouldwin | n/a | n/a | n/a | n/a |
+| Oh Hell engine: bid order; dealer hook forbids balancing bid | unit:ohhell:bid-order + unit:ohhell:hook | unit:ohhell:hook (throws) | n/a | n/a | n/a |
+| Oh Hell scoring: exact = 10+bid, miss = 0; last round ends game | unit:ohhell:score + unit:ohhell:lastround | n/a | n/a | n/a | n/a |
+| Oh Hell: end-to-end launch + play in simulator | e2e:ohhell | n/a | n/a | e2e:ohhell-spam | n/a |
+| Bridge game: metadata (id/name/glyph/category) + phone rules | unit:bridge:metadata | n/a | n/a | n/a | n/a |
+| Bridge auction: bid must outrank; NT tops a level; pass always legal | unit:bridge:bid-rank + unit:bridge:nt-rank + unit:bridge:pass-legal | unit:bridge:bid-rank (rejects low) | n/a | n/a | n/a |
+| Bridge auction: double only vs opponent bid once; redouble only on our doubled bid; new bid clears double | unit:bridge:double-legal + unit:bridge:redouble-legal + unit:bridge:double-cleared | n/a | n/a | n/a | n/a |
+| Bridge auction: 4 passes = passed out; bid + 3 passes ends; declarer = first to name strain | unit:bridge:passed-out + unit:bridge:three-pass + unit:bridge:declarer | n/a | n/a | n/a | n/a |
+| Bridge auction: placeCall transitions (passed-out→hand-end; live→play, LHO leads); standingBid | unit:bridge:placecall + unit:bridge:standingbid | unit:bridge:placecall (illegal throws via engine) | n/a | n/a | n/a |
+| Bridge play: must follow suit when able else free; trump/NT trick winner | unit:bridge:follow + unit:bridge:winner | n/a | n/a | n/a | n/a |
+| Bridge play: dummy = declarer's partner; declarer controls both seats; opening lead reveals dummy | unit:bridge:dummy + unit:bridge:controller + unit:bridge:dummy-reveal | n/a | n/a | n/a | n/a |
+| Bridge scoring: part-scores/games/vul/overtricks/slams (exact tables) | unit:bridge:score-made + unit:bridge:score-vul + unit:bridge:score-over + unit:bridge:score-slam | n/a | n/a | n/a | n/a |
+| Bridge scoring: doubled making (+insult, doubled overtricks); undertrick tables (undoubled/doubled/redoubled, vul) | unit:bridge:score-doubled + unit:bridge:score-set | n/a | n/a | n/a | n/a |
+| Bridge: vulnerability cycle; dealer rotation + deal#; endHand credits side + ends at target | unit:bridge:vul-cycle + unit:bridge:rotate + unit:bridge:endhand | n/a | n/a | n/a | n/a |
+| Bridge AI: 40-match seeded self-play — auctions always terminate, no illegal call/play; 1NT opening | unit:bridge:selfplay + unit:bridge:open-1nt | n/a | n/a | unit:bridge:selfplay (drives every seat) | n/a |
+| Bridge wrapper: auction render + call selector; double-tap makes call; play render + declarer plays dummy; hand-end/game-end double-tap | unit:bridge:wrap-auction + unit:bridge:wrap-makecall + unit:bridge:wrap-play + unit:bridge:wrap-handend + unit:bridge:wrap-gameend | unit:bridge:wrap-play (illegal-card double-tap no-ops) | n/a | n/a | n/a |
+| Bridge game: end-to-end launch + auction + play in simulator | e2e:bridge | n/a | n/a | e2e:bridge-spam | n/a |
+| Eight-game launcher: …+ Bridge launchable | e2e:* (each navigated via focus= marker and launched) | n/a | n/a | n/a | n/a |
+| Three-game launcher: Hearts + Euchre + Spades registered | manual:hw (launcher logic in platform; integration check on real glasses) | n/a | n/a | n/a | n/a |
+| Spades bid view fits 288px (header+1+3hand+selector+footer ≈ 8 lines) | manual:hw (real-glasses layout check) | n/a | n/a | n/a | n/a |
 
 `TODO:unit` = vitest case to be written in `tests/games/hearts.test.ts` or `tests/main.test.ts`.
 `TODO:integration` = vitest with jsdom + a fake bridge.
@@ -96,12 +204,42 @@ Columns dropped as n/a:
 - [x] tsc strict: passes
 - [x] app.json validation: `npm run pack` succeeds
 - [ ] Lint: not wired (no ESLint config in CardPack yet)
-- [ ] Secret scan: not wired
-- [x] Bundle size: 67 KB packed `.ehpk`, well under any hub limit
+- [x] Secret scan: grep over `src/games/spades/` clean (no Bearer/sk-/AIza/token/secret); no `http://`, no `eval`/`Function`/`innerHTML` in the new module (rules HTML is inlined by main.ts)
+- [x] No stale `.js`: `noEmit: true` set, `find src -name '*.js'` empty
+- [x] Bundle size: 75 KB packed `.ehpk` (v0.3.4, +Spades), well under any hub limit
 - [x] Network whitelist: no permissions in `app.json` (no fetches at all)
 - [x] License/NOTICE present
 
-### Unit (Vitest, CardPack-side)
+### Unit (Vitest, CardPack-side) — 284 tests, 12 files
+- **Bridge: 36 tests** in `tests/games/bridge.test.ts` — engine (auction
+  legality/ranking/termination, declarer determination, doubled/redoubled
+  tracking, trump + NT trick winners, follow-suit, dummy reveal + controller),
+  the full duplicate-style **scoring tables** (made / vulnerable / overtricks /
+  slams / doubled-making / undertrick penalty tables incl. redoubled), the
+  vulnerability cycle + dealer rotation + endHand-credits-and-ends-at-target,
+  a **40-match seeded self-play** asserting every auction terminates and the AI
+  never emits an illegal call or play, plus wrapper coverage (auction render +
+  call selector, double-tap makes the call, play render + declarer-plays-dummy,
+  hand-end/game-end double-tap). Engine + AI are CardPack-native (not ported).
+- **Engine + AI now tested IN-REPO for all four games.** Hearts
+  (`hearts-engine.test.ts`, 9) and Euchre (`euchre-engine.test.ts` 31 +
+  `euchre-ai.test.ts` + `euchre-selfplay.test.ts`, 49 total) are mirrors of
+  the sibling-repo suites repointed at CardPack's OWN engine copies — so an
+  edit to `src/games/{hearts,euchre}/engine.ts` here is caught by `npm test`,
+  not only upstream (closes the v0.3.5 latent-divergence gap). Spades &
+  Crazy 8s engines were already tested in-repo. Keep the mirrors in sync if
+  an engine changes.
+- **Spades: 31 tests** in `tests/games/spades.test.ts` — wrapper coverage
+  (metadata, rules HTML, bid-phase render + dial/clamp + confirm, AI-bids-on-
+  timer, play render, legal/illegal/single-tap/cursor-wrap gestures, hand-end
+  + game-end banners, phone new-game/set-difficulty/unknown, destroy) PLUS
+  engine sanity (deal, bid order→play, spade-lead lock, follow-suit, trick
+  winner) AND the previously-uncovered **end-of-hand scoring path**: made +
+  overtricks/bags, successful nil, failed nil (stray trick bags partner),
+  missed bid (set), and 10-bag overflow −100 penalty + carry. The scoring
+  tests play the real 13th trick through `playCard` and assert the computed
+  `score`/`bags` — this is the dimension that was a hidden empty cell until
+  the coverage-matrix pass that followed the v0.3.4 Spades add.
 - **66 tests across 2 files** — `tests/games/hearts.test.ts` (35) and
   `tests/games/euchre.test.ts` (31). Euchre wrapper tests cover module
   metadata, init render, order-up bidding (toggle, Pass, single-tap no-op),
@@ -132,17 +270,29 @@ Columns dropped as n/a:
   needed for v0.1 since e2e covers the same ground via the simulator — keep
   in the backlog and add if e2e starts feeling slow/flaky.
 
-### End-to-end (simulator)
-- **8 cases** in `scripts/regression.mjs`. Asserts bootstrap reaches
-  `view=launcher`, no console errors during bootstrap, glasses screenshot
-  non-blank, tap on launcher transitions to `view=hearts`, swipe-down
-  in-game doesn't crash, glasses still renders after gestures, **double-tap
-  mid-play is a non-crashing no-op (e2e:7)**, and **10-input gesture spam
-  doesn't crash with the glasses still rendering after (e2e:8 — stands in
-  for BLE write-serialization stress)**.
-- Runs against a manually-launched simulator on port 9899; `npm run test:e2e`.
-- State-log emission lives in `src/main.ts` (the `emitState()` wrapper
-  around `runtime.onRender`). Format: `[cardpack:state] view=<id>`.
+### End-to-end (simulator) — full per-game, 72 checks
+- **`scripts/regression.mjs` runs one flow per registered game**
+  (hearts, euchre, spades, crazy8, ginrummy, cribbage, ohhell, bridge) — 72 assertions, all green as of v0.4.0.
+  Each flow: boot the sim, assert `view=launcher`, navigate the launcher
+  cursor to that game via the `focus=<id>` state marker, tap to launch it
+  (`view=<id>`), drive its core gestures (bid-dial/confirm, play, draw,
+  suit-pick as applicable), then assert no console errors, glasses still
+  non-blank, and the in-game render differs from the launcher. **All four
+  games also run the 10-input gesture-spam stress** (stands in for the
+  BLE-write-serialization × concurrent-gesture cell).
+- **Self-launching:** the script spawns the NATIVE simulator binary directly
+  (not the `.bin` Node wrapper, which orphans the real sim on kill) and waits
+  for the automation port to free between games. There is no glasses-gesture
+  path back to the launcher, so each game runs in its own fresh sim session.
+  Prereq: `npm run dev` on 5180; then `npm run test:e2e`.
+- State-log emission lives in `src/main.ts` (`emitState()`):
+  `[cardpack:state] view=launcher focus=<cursored id>` in the launcher,
+  `view=<id>` in a game. The `focus=` field is what makes launcher navigation
+  deterministic in e2e.
+- **Runtime finding (v0.3.5):** the e2e confirmed the v0.3.3 two-layer
+  bounce fix did NOT break swipe input — the launcher cursor moves on swipe
+  in the simulator. (Real-glasses confirmation of the *visual* bounce is
+  still pending per PREMORTEM; the sim can't show the overscroll animation.)
 
 ### Hardware (real glasses)
 - The Phase A gate: 5 hands of Hearts on real glasses. **Not yet run.**

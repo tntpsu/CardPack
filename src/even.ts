@@ -11,8 +11,17 @@ import {
   waitForEvenAppBridge,
 } from '@evenrealities/even_hub_sdk'
 
-const MAIN_ID = 1
-const MAIN_NAME = 'main'
+// Two-layer page (Image-Based App Pattern from the glasses-ui guide,
+// applied to a text-first app): an invisible single-space event-capture
+// layer underneath a separate display layer. Swipes/taps land on the
+// EVENT layer — which has nothing scrollable — so the firmware never
+// overscroll-bounces the VISIBLE content. (A single capture+content
+// container rubber-bands on every swipe because the gesture scrolls the
+// content it's drawing; splitting them removes the visible bounce.)
+const DISPLAY_ID = 1
+const DISPLAY_NAME = 'display'
+const EVENT_ID = 2
+const EVENT_NAME = 'events'
 const BRIDGE_TIMEOUT_MS = 4000
 const WIDTH = 576
 const HEIGHT = 288
@@ -52,7 +61,10 @@ export async function connectEvenRuntime(initial: string): Promise<EvenRuntime |
     return null
   }
 
-  const main = new TextContainerProperty({
+  // Visible content layer. NOT event-capturing, so swipes are never
+  // routed here — the firmware has no reason to scroll it, so it can't
+  // bounce. Updated in-place via textContainerUpgrade.
+  const display = new TextContainerProperty({
     xPosition: 0,
     yPosition: 0,
     width: WIDTH,
@@ -60,14 +72,35 @@ export async function connectEvenRuntime(initial: string): Promise<EvenRuntime |
     borderWidth: 0,
     borderColor: 5,
     paddingLength: 6,
-    containerID: MAIN_ID,
-    containerName: MAIN_NAME,
+    containerID: DISPLAY_ID,
+    containerName: DISPLAY_NAME,
     content: initial,
+    isEventCapture: 0,
+  })
+
+  // Invisible event sink. A single space (cannot be empty) with no border
+  // and no padding — nothing to scroll, so the swipe-overscroll bounce has
+  // nowhere to render. Swipes still fire as SCROLL_TOP/SCROLL_BOTTOM text
+  // events from here (text-capture containers report swipes by direction).
+  const events = new TextContainerProperty({
+    xPosition: 0,
+    yPosition: 0,
+    width: WIDTH,
+    height: HEIGHT,
+    borderWidth: 0,
+    borderColor: 0,
+    paddingLength: 0,
+    containerID: EVENT_ID,
+    containerName: EVENT_NAME,
+    content: ' ',
     isEventCapture: 1,
   })
 
+  // Declaration order is z-order: `events` first, `display` on top. The
+  // event layer's single space is transparent, so stacking is moot
+  // visually; capture is by the isEventCapture flag, not z-order.
   const created = await bridge.createStartUpPageContainer(
-    new CreateStartUpPageContainer({ containerTotalNum: 1, textObject: [main] }),
+    new CreateStartUpPageContainer({ containerTotalNum: 2, textObject: [events, display] }),
   )
   if (created !== 0) return null
 
@@ -120,8 +153,8 @@ export async function connectEvenRuntime(initial: string): Promise<EvenRuntime |
       await enqueue(async () => {
         await bridge.textContainerUpgrade(
           new TextContainerUpgrade({
-            containerID: MAIN_ID,
-            containerName: MAIN_NAME,
+            containerID: DISPLAY_ID,
+            containerName: DISPLAY_NAME,
             contentOffset: 0,
             contentLength: Math.max(lastLen, text.length),
             content: text,

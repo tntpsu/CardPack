@@ -1,38 +1,86 @@
 #!/usr/bin/env node
-// End-to-end regression test for Card Pack via the Even Hub simulator
-// HTTP API. Run after every Phase to catch the bugs unit tests can't see
-// (bootstrap hangs, gesture handler binding, render-loop death).
+// End-to-end regression for Card Pack via the Even Hub simulator HTTP API.
+// Catches what unit tests can't: bootstrap hangs, gesture-handler binding,
+// render-loop death, per-game launch + play not crashing on real render.
 //
-// Prereqs (run manually first, in two separate terminals):
-//   1. cd ~/Documents/CardPack && npm run dev
-//        # Vite on http://localhost:5180
-//   2. npx evenhub-simulator --automation-port 9899 http://localhost:5180
-//        # Sim opens; main webview at top, glasses display at bottom.
+// FULL coverage: every registered game gets its own flow — navigate the
+// launcher to it (deterministically, via the `focus=<id>` state marker),
+// launch it, drive its core gestures, and assert it stayed alive and kept
+// rendering. There is no glasses-gesture path back to the launcher, so each
+// game runs in its own fresh simulator session (this script spawns + kills
+// the simulator itself, one session per game).
 //
-// Then in a third terminal:
+// Prereq (one terminal):
+//   cd ~/Documents/CardPack && npm run dev       # Vite on http://localhost:5180
+// Then:
 //   npm run test:e2e
+//
+// The simulator binary is resolved from node_modules; no manual sim launch.
 
+import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const SIM_BASE = 'http://127.0.0.1:9899'
+const PORT = 9899
+const SIM_BASE = `http://127.0.0.1:${PORT}`
+const DEV_URL = 'http://localhost:5180'
 const HERE = dirname(fileURLToPath(import.meta.url))
+// Spawn the NATIVE simulator binary directly, not the `.bin` Node wrapper.
+// The wrapper runs the native binary as a child via execFileSync, so killing
+// the wrapper orphans the real sim — it keeps holding the automation port and
+// later sessions end up talking to a stale instance.
+const SIM_BIN = join(
+  HERE, '..', 'node_modules', '@evenrealities',
+  `sim-${process.platform}-${process.arch}`, 'bin', 'evenhub-simulator',
+)
 const OUT_DIR = join(HERE, '..', 'tests', 'screenshots-regression')
 
-let lastConsoleId = -1
 let pass = 0
 let fail = 0
 const failures = []
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+function check(label, condition, detail = '') {
+  if (condition) { pass++; console.log(`  ✓ ${label}${detail ? ` — ${detail}` : ''}`) }
+  else { fail++; failures.push(label); console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`) }
+}
+
+// ── simulator lifecycle ────────────────────────────────────────────────
 
 async function ping() {
   const r = await fetch(`${SIM_BASE}/api/ping`).catch(() => null)
-  if (!r || !r.ok) {
-    console.error(`Simulator not reachable on ${SIM_BASE}`)
-    console.error('Run: npx evenhub-simulator --automation-port 9899 http://localhost:5180')
-    process.exit(1)
+  return !!(r && r.ok)
+}
+
+async function spawnSim() {
+  const child = spawn(SIM_BIN, ['--automation-port', String(PORT), DEV_URL], {
+    stdio: 'ignore',
+    detached: false,
+  })
+  const started = Date.now()
+  while (Date.now() - started < 20_000) {
+    if (await ping()) return child
+    await sleep(400)
+  }
+  throw new Error('simulator did not come up within 20s')
+}
+
+async function killSim(child) {
+  if (child && !child.killed) {
+    try { child.kill('SIGKILL') } catch { /* already gone */ }
+  }
+  // Wait until the automation port stops answering — guarantees the next
+  // session binds a fresh sim rather than racing a dying one.
+  const t0 = Date.now()
+  while (Date.now() - t0 < 8000) {
+    if (!(await ping())) return
+    await sleep(300)
   }
 }
+
+// ── automation API ───────────────────────────────────────────────────────
 
 async function input(action) {
   const r = await fetch(`${SIM_BASE}/api/input`, {
@@ -43,133 +91,172 @@ async function input(action) {
   if (!r.ok) throw new Error(`/api/input ${action} → ${r.status}`)
 }
 
-async function fetchConsoleEntries() {
-  const r = await fetch(`${SIM_BASE}/api/console`)
-  if (!r.ok) return []
+async function consoleEntries() {
+  const r = await fetch(`${SIM_BASE}/api/console`).catch(() => null)
+  if (!r || !r.ok) return []
   const data = await r.json()
   return data.entries ?? []
 }
 
-async function waitForState(predicate, { timeoutMs = 10_000, label } = {}) {
+function stateMessages(entries) {
+  return entries
+    .map(e => e.message)
+    .filter(m => typeof m === 'string' && m.includes('[cardpack:state]'))
+}
+
+async function waitForState(predicate, { timeoutMs = 8000, label } = {}) {
   const started = Date.now()
   while (Date.now() - started < timeoutMs) {
-    const entries = await fetchConsoleEntries()
-    const fresh = entries.filter(e => e.id > lastConsoleId)
-    for (const e of fresh) {
-      if (typeof e.message === 'string' && e.message.includes('[cardpack:state]') && predicate(e.message)) {
-        lastConsoleId = e.id
-        return e
-      }
-      if (e.id > lastConsoleId) lastConsoleId = e.id
-    }
-    await new Promise(r => setTimeout(r, 200))
+    const msgs = stateMessages(await consoleEntries())
+    if (msgs.some(predicate)) return true
+    await sleep(200)
   }
   throw new Error(`timed out waiting for state: ${label ?? '(unlabeled)'}`)
 }
 
-async function countStateLogs(durationMs) {
-  const before = await fetchConsoleEntries()
-  const startId = before.length > 0 ? before[before.length - 1].id : -1
-  await new Promise(r => setTimeout(r, durationMs))
-  const after = await fetchConsoleEntries()
-  const fresh = after.filter(e => e.id > startId && typeof e.message === 'string' && e.message.includes('[cardpack:state]'))
-  if (fresh.length > 0) lastConsoleId = Math.max(lastConsoleId, fresh[fresh.length - 1].id)
-  return fresh.length
+async function latestFocus() {
+  const msgs = stateMessages(await consoleEntries())
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = /focus=(\w+)/.exec(msgs[i])
+    if (m) return m[1]
+  }
+  return null
 }
 
-async function checkConsoleErrors() {
-  const entries = await fetchConsoleEntries()
+async function realErrors() {
+  const entries = await consoleEntries()
   return entries.filter(e =>
-    e.level === 'error' ||
-    (typeof e.message === 'string' && (e.message.includes('[uncaught]') || e.message.includes('[unhandledrejection]'))),
+    (e.level === 'error' ||
+      (typeof e.message === 'string' && (e.message.includes('[uncaught]') || e.message.includes('[unhandledrejection]')))) &&
+    !String(e.message).includes('Failed to fetch') &&
+    !String(e.message).includes('NetworkError'),
   )
 }
 
-function check(label, condition, detail = '') {
-  if (condition) { pass++; console.log(`  ✓ ${label}${detail ? ` — ${detail}` : ''}`) }
-  else { fail++; failures.push(label); console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`) }
+async function glassesShot() {
+  const r = await fetch(`${SIM_BASE}/api/screenshot/glasses`).catch(() => null)
+  if (!r || !r.ok) return { bytes: 0, hash: '' }
+  const buf = Buffer.from(await r.arrayBuffer())
+  return { bytes: buf.byteLength, hash: createHash('sha1').update(buf).digest('hex') }
+}
+
+// ── per-game flow ──────────────────────────────────────────────────────
+
+// Every game runs its core-gesture flow AND the gesture-spam stress pass.
+const GAMES = [
+  { id: 'hearts', gestures: ['down', 'down', 'up', 'double_click', 'down', 'double_click'], spam: true },
+  { id: 'euchre', gestures: ['down', 'double_click', 'up', 'double_click', 'down', 'double_click'], spam: true },
+  { id: 'spades', preWaitMs: 2800, gestures: ['up', 'up', 'double_click', 'down', 'double_click', 'down', 'double_click'], spam: true },
+  { id: 'crazy8', preWaitMs: 1500, gestures: ['down', 'double_click', 'down', 'double_click', 'double_click'], spam: true },
+  { id: 'ginrummy', gestures: ['double_click', 'down', 'down', 'double_click', 'down', 'double_click'], spam: true },
+  // Cribbage: pick 2 cards, swipe to the CONFIRM slot (index 6), commit, then peg.
+  { id: 'cribbage', gestures: ['double_click', 'down', 'double_click', 'down', 'down', 'down', 'down', 'down', 'double_click', 'double_click', 'down', 'double_click'], spam: true },
+  // Oh Hell: confirm your bid, let AI bid, then play.
+  { id: 'ohhell', gestures: ['double_click', 'down', 'down', 'double_click', 'down', 'double_click', 'down', 'double_click'], spam: true },
+  // Bridge: dial through calls + make the seeded call, let the AI auction
+  // settle, then play (declarer may drive own + dummy seats).
+  { id: 'bridge', preWaitMs: 1500, gestures: ['down', 'double_click', 'down', 'down', 'double_click', 'down', 'double_click', 'down', 'double_click'], spam: true },
+]
+
+async function navigateToFocus(targetId) {
+  // Cursor start position depends on persisted last-played; swipe down until
+  // the focus marker reports the target (cursor wraps, so ≤ #games steps).
+  // A swipe sent before the bridge handlers finish binding is dropped, so we
+  // confirm each swipe moved the focus and re-swipe if it didn't.
+  let cur = await latestFocus()
+  for (let i = 0; i < 10 && cur !== targetId; i++) {
+    const prev = cur
+    await input('down')
+    const t0 = Date.now()
+    while (Date.now() - t0 < 1500) {
+      const f = await latestFocus()
+      if (f && f !== prev) { cur = f; break }
+      await sleep(150)
+    }
+    cur = await latestFocus()
+  }
+  return cur === targetId
+}
+
+async function runGame(game) {
+  console.log(`\n=== ${game.id} ===`)
+  const child = await spawnSim()
+  try {
+    await sleep(6000) // SDK init + bridge connect + handler binding
+    // NB: don't clear the console — the app emits state only on CHANGE, so
+    // clearing would drop the bootstrap `view=launcher focus=…` marker with
+    // nothing to re-emit it. Each session is a fresh process, so the console
+    // already starts clean.
+
+    // 1. Bootstrap to launcher.
+    let ok = true
+    try { await waitForState(m => m.includes('view=launcher'), { timeoutMs: 6000, label: `${game.id}: launcher` }) }
+    catch { ok = false }
+    check(`${game.id}: bootstrap → launcher`, ok)
+
+    const launcherShot = await glassesShot()
+    check(`${game.id}: launcher screenshot non-blank`, launcherShot.bytes > 1000, `${launcherShot.bytes} bytes`)
+
+    // 2. Navigate the launcher cursor to this game and launch it.
+    const navOk = await navigateToFocus(game.id)
+    check(`${game.id}: launcher cursor reaches focus=${game.id}`, navOk)
+    await input('click')
+    let entered = true
+    try { await waitForState(m => m.includes(`view=${game.id}`), { timeoutMs: 4000, label: `${game.id}: enter` }) }
+    catch { entered = false }
+    check(`${game.id}: tap launches it (view=${game.id})`, entered)
+
+    // 3. Drive the game's core gestures.
+    if (game.preWaitMs) await sleep(game.preWaitMs) // let AI bids/plays settle
+    for (const g of game.gestures) {
+      try { await input(g) } catch { /* tolerate rate-limit */ }
+      await sleep(350)
+    }
+
+    // 4. Survived: no errors, still rendering, render changed from launcher.
+    const errs = await realErrors()
+    check(`${game.id}: play flow raised no console errors`, errs.length === 0,
+      errs.length ? errs[0].message.slice(0, 80) : 'clean')
+
+    const gameShot = await glassesShot()
+    check(`${game.id}: glasses still rendering after play`, gameShot.bytes > 1000, `${gameShot.bytes} bytes`)
+    check(`${game.id}: in-game render differs from launcher`, gameShot.hash !== launcherShot.hash)
+
+    // 5. Optional gesture-spam stress (one game is enough to cover the cell).
+    if (game.spam) {
+      const spam = ['up', 'down', 'up', 'down', 'click', 'up', 'down', 'click', 'up', 'down']
+      for (const a of spam) { try { await input(a) } catch { /* tolerate */ } }
+      await sleep(800)
+      const spamErrs = await realErrors()
+      check(`${game.id}: gesture spam (10 rapid) does not crash`, spamErrs.length === 0,
+        spamErrs.length ? spamErrs[0].message.slice(0, 80) : 'clean')
+      const afterSpam = await glassesShot()
+      check(`${game.id}: still rendering after spam`, afterSpam.bytes > 1000, `${afterSpam.bytes} bytes`)
+    }
+  } finally {
+    await killSim(child)
+    await sleep(500)
+  }
 }
 
 async function main() {
-  console.log('Card Pack regression test')
-  console.log('---')
-  await ping()
+  console.log('Card Pack regression — full per-game e2e')
+  console.log('========================================')
 
+  // Dev server must be up; the simulator loads it.
+  const devUp = await fetch(DEV_URL).then(r => r.ok).catch(() => false)
+  if (!devUp) {
+    console.error(`Dev server not reachable at ${DEV_URL}. Run: npm run dev`)
+    process.exit(1)
+  }
   await mkdir(OUT_DIR, { recursive: true })
 
-  console.log('1. Bootstrap reaches view=launcher (proves runtime init + render path)')
-  try {
-    const e = await waitForState(m => m.includes('view=launcher'), { timeoutMs: 5_000, label: 'launcher bootstrap' })
-    check('bootstrap → launcher', true, e.message)
-  } catch {
-    check('bootstrap → launcher', false, 'no [cardpack:state] view=launcher within 5s')
+  for (const game of GAMES) {
+    try { await runGame(game) }
+    catch (err) { check(`${game.id}: harness ran without throwing`, false, err.message) }
   }
 
-  console.log('2. No console errors during bootstrap')
-  const errors = await checkConsoleErrors()
-  const realErrors = errors.filter(e =>
-    !e.message.includes('Failed to fetch') &&
-    !e.message.includes('NetworkError'),
-  )
-  check('no unexpected console errors', realErrors.length === 0,
-    realErrors.length > 0 ? realErrors.map(e => e.message.slice(0, 80)).join('; ') : 'clean')
-
-  console.log('3. Glasses screenshot is non-blank')
-  const r = await fetch(`${SIM_BASE}/api/screenshot/glasses`)
-  const png = await r.arrayBuffer()
-  check('glasses display rendered content', png.byteLength > 1000, `${png.byteLength} bytes`)
-
-  console.log('4. Tap on launcher transitions to view=hearts')
-  await input('click')
-  try {
-    const e = await waitForState(m => m.includes('view=hearts'), { timeoutMs: 3_000, label: 'launcher tap → hearts' })
-    check('tap on launcher launches Hearts', true, e.message)
-  } catch {
-    check('tap on launcher launches Hearts', false, 'no view=hearts transition within 3s of click')
-  }
-
-  console.log('5. In-game swipe-down does not crash + emits a render')
-  await input('down')
-  // Hearts swallows swipe-down internally (cursor move); we just want to
-  // see another state-log fire to prove the render loop survived.
-  await new Promise(r => setTimeout(r, 800))
-  const errsAfterSwipe = (await checkConsoleErrors()).filter(e =>
-    !e.message.includes('Failed to fetch'))
-  check('swipe-down does not crash', errsAfterSwipe.length === 0,
-    errsAfterSwipe.length > 0 ? errsAfterSwipe[0].message.slice(0, 80) : 'no errors')
-
-  console.log('6. Glasses still renders after gestures')
-  const r2 = await fetch(`${SIM_BASE}/api/screenshot/glasses`)
-  const png2 = await r2.arrayBuffer()
-  check('glasses still rendering after gestures', png2.byteLength > 1000, `${png2.byteLength} bytes`)
-
-  console.log('7. Double-tap mid-play does not crash (Hearts swallows it as no-op)')
-  await input('double_click')
-  await new Promise(r => setTimeout(r, 500))
-  const errsAfterDoubleTap = (await checkConsoleErrors()).filter(e =>
-    !e.message.includes('Failed to fetch'))
-  check('double-tap mid-play does not crash', errsAfterDoubleTap.length === 0,
-    errsAfterDoubleTap.length > 0 ? errsAfterDoubleTap[0].message.slice(0, 80) : 'no errors')
-
-  console.log('8. Gesture spam (10 rapid inputs) → no crash, render survives')
-  // Stand-in for the BLE-write-serialization × concurrent-gesture cell.
-  // Real BLE write rate is bounded server-side; this proves the client
-  // doesn't itself crash when the user mashes the touchpad.
-  const spam = ['up', 'down', 'up', 'down', 'click', 'up', 'down', 'click', 'up', 'down']
-  for (const action of spam) {
-    try { await input(action) } catch { /* server may rate-limit; tolerate */ }
-  }
-  await new Promise(r => setTimeout(r, 800))
-  const errsAfterSpam = (await checkConsoleErrors()).filter(e =>
-    !e.message.includes('Failed to fetch'))
-  check('gesture spam does not crash', errsAfterSpam.length === 0,
-    errsAfterSpam.length > 0 ? errsAfterSpam[0].message.slice(0, 80) : 'no errors')
-  const r3 = await fetch(`${SIM_BASE}/api/screenshot/glasses`)
-  const png3 = await r3.arrayBuffer()
-  check('glasses still rendering after spam', png3.byteLength > 1000, `${png3.byteLength} bytes`)
-
-  console.log()
-  console.log(`Result: ${pass} passed, ${fail} failed`)
+  console.log(`\nResult: ${pass} passed, ${fail} failed`)
   if (fail > 0) {
     console.log('Failures:')
     for (const f of failures) console.log(`  - ${f}`)
