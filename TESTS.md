@@ -323,7 +323,8 @@ Columns dropped as n/a:
 
 ### Compatibility
 - TS strict ✓
-- SDK pinned: `@evenrealities/even_hub_sdk@^0.0.10`
+- SDK pinned: `@evenrealities/even_hub_sdk@0.0.12` (exact — a caret on a
+  `0.0.x` version pins anyway, so the range was never granting flexibility)
 - iOS WKWebView vs Android: not tested
 - Min app version: 2.0.0; min SDK: 0.0.10 (in app.json)
 
@@ -335,7 +336,9 @@ Columns dropped as n/a:
 ### Build / release verification
 - [x] `.ehpk` packs successfully
 - [x] Manifest version matches package.json
-- [ ] Bundle has no debug logs: not checked
+- [x] Bundle has no debug logs: two `console.*` calls survive into the bundle
+      and both are intentional — `main.ts` emits the `[cardpack:state]` marker
+      that `regression.mjs` parses, and logs a bootstrap failure. No stray logs.
 - [ ] Sideload boots on real glasses: pending Phase A gate
 
 ### Documentation
