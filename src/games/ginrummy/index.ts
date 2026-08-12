@@ -31,7 +31,7 @@ export const ginRummyGame: Game = {
   name: 'Gin Rummy',
   shortDesc: 'Meld sets/runs, knock to win',
   category: 'shed',
-  glyph: 'G',
+  glyph: '●',
   init: (ctx: PlatformContext): GameHandle => new GinRummyHandle(ctx),
   renderPhoneRules: () => GINRUMMY_RULES_HTML,
 }

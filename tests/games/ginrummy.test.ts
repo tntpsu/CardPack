@@ -210,7 +210,7 @@ describe('ginRummyGame — wrapper', () => {
   it('module metadata', () => {
     expect(ginRummyGame.id).toBe('ginrummy')
     expect(ginRummyGame.name).toBe('Gin Rummy')
-    expect(ginRummyGame.glyph).toBe('G')
+    expect(ginRummyGame.glyph).toBe('●')
     expect(ginRummyGame.shortDesc.length).toBeLessThan(40)
     const html = ginRummyGame.renderPhoneRules?.() ?? ''
     expect(html).toContain('meld')

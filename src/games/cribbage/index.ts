@@ -27,7 +27,7 @@ export const cribbageGame: Game = {
   name: 'Cribbage',
   shortDesc: 'Peg to 121 — 15s, runs, crib',
   category: 'pegging',
-  glyph: 'C',
+  glyph: '▣',
   init: (ctx: PlatformContext): GameHandle => new CribbageHandle(ctx),
   renderPhoneRules: () => CRIBBAGE_RULES_HTML,
 }

@@ -30,7 +30,7 @@ export const ohHellGame: Game = {
   name: 'Oh Hell',
   shortDesc: 'Bid your exact tricks',
   category: 'trick',
-  glyph: '!',
+  glyph: '★',
   init: (ctx: PlatformContext): GameHandle => new OhHellHandle(ctx),
   renderPhoneRules: () => OHHELL_RULES_HTML,
 }
