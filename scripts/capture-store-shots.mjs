@@ -39,6 +39,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 // Gestures reused from scripts/regression.mjs — they are already tuned to
 // drive each game into a representative mid-play state.
+//
+// A gesture entry may be a number instead of an action string, meaning "pause
+// this many ms here". Oh Hell needs it: round 1 deals a single card each, so a
+// listing shot taken there is nearly empty. Getting to a wider round means
+// playing two hands out and waiting on AI bids and plays between them, which
+// the uniform 350 ms step is too short for.
 const GAMES = [
   { id: 'hearts', gestures: ['down', 'down', 'up', 'double_click', 'down', 'double_click'] },
   { id: 'euchre', gestures: ['down', 'double_click', 'up', 'double_click', 'down', 'double_click'] },
@@ -46,7 +52,21 @@ const GAMES = [
   { id: 'crazy8', preWaitMs: 1500, gestures: ['down', 'double_click', 'down', 'double_click', 'double_click'] },
   { id: 'ginrummy', gestures: ['double_click', 'down', 'down', 'double_click', 'down', 'double_click'] },
   { id: 'cribbage', gestures: ['double_click', 'down', 'double_click', 'down', 'down', 'down', 'down', 'down', 'double_click', 'double_click', 'down', 'double_click'] },
-  { id: 'ohhell', gestures: ['double_click', 'down', 'down', 'double_click', 'down', 'double_click', 'down', 'double_click'] },
+  // Play rounds 1 and 2 out so the shot lands in round 3 (three cards each)
+  // rather than round 1's single-card hand, which renders nearly empty.
+  {
+    id: 'ohhell',
+    gestures: [
+      'double_click', 1200, // round 1: confirm bid, let the AI bid
+      'double_click', 2500, // play the only card, let the hand finish
+      'double_click', 1500, // hand-end → round 2
+      'double_click', 1200, // round 2: confirm bid
+      'double_click', 1200, // play
+      'double_click', 2500, // play again, hand finishes
+      'double_click', 1500, // hand-end → round 3
+      'double_click', 1800, // round 3: confirm bid, AI bids
+    ],
+  },
   { id: 'bridge', preWaitMs: 1500, gestures: ['down', 'double_click', 'down', 'down', 'double_click', 'down', 'double_click', 'down', 'double_click'] },
 ]
 
@@ -158,6 +178,7 @@ async function captureGame(game) {
     }
     if (game.preWaitMs) await sleep(game.preWaitMs)
     for (const g of game.gestures) {
+      if (typeof g === 'number') { await sleep(g); continue }
       try { await input(g) } catch { /* tolerate rate-limit */ }
       await sleep(350)
     }
@@ -174,13 +195,24 @@ async function main() {
   const written = []
   const problems = []
 
-  const targets = [
+  // Optional filter so a single shot can be re-taken without re-running all
+  // nine simulator sessions: `node scripts/capture-store-shots.mjs ohhell`.
+  const only = process.argv.slice(2)
+  const all = [
     { id: 'launcher', capture: captureLauncher },
     ...GAMES.map(g => ({ id: g.id, capture: () => captureGame(g) })),
   ]
+  const targets = only.length ? all.filter(t => only.includes(t.id)) : all
+  if (!targets.length) {
+    console.error(`no target matched ${only.join(', ')} — known: ${all.map(t => t.id).join(', ')}`)
+    process.exit(2)
+  }
 
-  for (const [i, t] of targets.entries()) {
-    process.stdout.write(`[${i + 1}/${targets.length}] ${t.id} … `)
+  for (const [n, t] of targets.entries()) {
+    // Number the file by its position in the FULL list so a filtered re-take
+    // overwrites the same filename instead of renumbering the listing.
+    const i = all.findIndex(a => a.id === t.id)
+    process.stdout.write(`[${n + 1}/${targets.length}] ${t.id} … `)
     try {
       const buf = await t.capture()
       const size = pngSize(buf)
