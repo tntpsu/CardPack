@@ -19,6 +19,7 @@ import {
   gameWinner,
   handPenalty,
   legalPlays,
+  MAX_RECYCLES,
   newGame,
   passTurn,
   playCard,
@@ -44,6 +45,7 @@ const DRAW_GUARD = 60
 
 interface HandRecord {
   winner: Position | null
+  recycles: number
   scoreBefore: Record<Position, number>
   scoreAfter: Record<Position, number>
   handSizes: Record<Position, number>
@@ -59,6 +61,7 @@ function playOut(seed: number, targetScore = 100): { final: GameState; hands: Ha
   const recordAndAdvance = (): boolean => {
     hands.push({
       winner: s.winner,
+      recycles: s.recycles,
       scoreBefore,
       scoreAfter: { ...s.score },
       handSizes: Object.fromEntries(
@@ -171,23 +174,28 @@ describe('Crazy Eights self-play', () => {
     expect(handPenalty([])).toBe(0)
   })
 
-  // ── KNOWN DEFECT ────────────────────────────────────────────────────────
-  // Crazy Eights can livelock. drawCard() reshuffles the discard back into the
-  // stock whenever the stock empties, so the stock is never truly exhausted:
-  // players draw one, play one, and the same 52 cards circulate forever with
-  // nobody shedding a last card. endStuckHand() can't rescue it because it only
-  // fires after four consecutive passes, and a pass needs drawCard to return
-  // null — which recycling prevents.
-  //
-  // Seed 84 reproduces: 3 hands complete, then a hand runs 19,997 plays without
-  // ending (hand sizes 18/5/9/16, stock 1, discard 3). Rate is 1 of the first
-  // 200 seeds, ~0.5% of games. On glasses this looks like a hand that never
-  // finishes — no crash, no error, just no progress.
-  //
-  // Marked `fails` so the defect is tracked in the suite rather than forgotten.
-  // WHEN FIXED this test starts failing: delete it and fold seed 84 into the
-  // termination sweep above.
-  it.fails('seed 84 never terminates (tracked livelock, see comment)', () => {
-    playOut(84)
+  // Regression for the livelock fixed by MAX_RECYCLES. Before the cap,
+  // drawCard reshuffled the discard back into the stock without limit, so the
+  // stock never truly emptied: players drew one and played one forever, nobody
+  // shed a last card, and endStuckHand never fired because a pass requires a
+  // failed draw. Seed 84 ran 19,997 plays in a single hand and never finished —
+  // no crash, no error, just no progress. It hit 1 of the first 200 seeds.
+  it('seed 84 terminates — the livelock the recycle cap closed', () => {
+    const { final } = playOut(84)
+    expect(final.phase).toBe('game-end')
+  })
+
+  it('never recycles the discard more than the cap allows', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const h of playOut(seed).hands) {
+        expect(h.recycles).toBeLessThanOrEqual(MAX_RECYCLES)
+      }
+    }
+  })
+
+  it('sweeps 200 seeds without a single hand running away', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      expect(playOut(seed).final.phase).toBe('game-end')
+    }
   })
 })

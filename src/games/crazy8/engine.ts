@@ -9,7 +9,8 @@
 //   rank, or is an 8 (8s are wild).
 // - Playing an 8 lets you declare the next suit (`currentSuit`).
 // - If you can't play, draw from the stock until you can (the stock reshuffles
-//   from the discard when empty). If nothing's left to draw, you pass.
+//   from the discard when empty, at most MAX_RECYCLES times per hand). If
+//   nothing's left to draw, you pass; four passes in a row end the hand.
 // - A hand ends when someone empties their hand. Everyone else adds the point
 //   value of their leftover cards to their running score.
 // - Card values: 8 = 50, K/Q/J/10 = 10, A = 1, others = pip value.
@@ -35,7 +36,25 @@ export interface GameState {
   targetScore: number
   /** Who emptied their hand this hand (set at hand-end / game-end). */
   winner: Position | null
+  /** Times the discard pile has been recycled back into the stock this hand.
+   *  Bounded by MAX_RECYCLES — see drawCard. */
+  recycles: number
 }
+
+/** How many times a single hand may recycle the discard pile back into the
+ *  stock.
+ *
+ *  Unbounded recycling livelocks: with the stock refilled forever, players draw
+ *  one and play one indefinitely, nobody sheds a last card, and the hand never
+ *  ends. It is not a hang the player can see as an error — just a hand that
+ *  never finishes. Seed 84 of the self-play soak reproduced it at ~19,997 plays
+ *  in a single hand, and it hit 1 of the first 200 seeds.
+ *
+ *  Capping recycling lets the stock genuinely run dry, at which point drawCard
+ *  returns null, players pass, and the existing four-passes rule resolves the
+ *  hand through endStuckHand. Normal hands end long before the stock empties
+ *  even once, so this is invisible in ordinary play. */
+export const MAX_RECYCLES = 1
 
 const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣']
@@ -98,6 +117,7 @@ export function newGame(targetScore = 100, rng: () => number = Math.random): Gam
     score: { S: 0, W: 0, N: 0, E: 0 },
     targetScore,
     winner: null,
+    recycles: 0,
   }
 }
 
@@ -107,6 +127,7 @@ export function startNewHand(state: GameState, rng: () => number = Math.random):
     ...dealFresh(rng),
     phase: 'play',
     winner: null,
+    recycles: 0,
   }
 }
 
@@ -167,17 +188,20 @@ export function drawCard(
 ): { state: GameState; drew: Card | null } {
   let stock = state.stock
   let discard = state.discard
+  let recycles = state.recycles
   if (stock.length === 0) {
     if (discard.length <= 1) return { state, drew: null } // nothing to recycle
+    if (recycles >= MAX_RECYCLES) return { state, drew: null } // see MAX_RECYCLES
     const top = discard[discard.length - 1]!
     stock = shuffle(discard.slice(0, -1), rng)
     discard = [top]
+    recycles += 1
   }
   const drew = stock[stock.length - 1]!
   const newStock = stock.slice(0, -1)
   const hand = [...state.hands[pos], drew]
   return {
-    state: { ...state, stock: newStock, discard, hands: { ...state.hands, [pos]: hand } },
+    state: { ...state, stock: newStock, discard, recycles, hands: { ...state.hands, [pos]: hand } },
     drew,
   }
 }
