@@ -96,6 +96,21 @@ class CribbageHandle implements GameHandle {
 
   destroy(): void { this.cancelPendingTimer() }
 
+  /** Progress token for the e2e harness: changes when play actually advances
+   *  (a bid taken, a card moved, a score credited) and not when the cursor
+   *  merely moves. See GameHandle.progressLabel in the platform. */
+  progressLabel(): string {
+    const s = this.state as {
+      phase: string
+      turn: string
+      hands: Record<string, unknown[]>
+      score: Record<string, number>
+    }
+    const cards = Object.values(s.hands).reduce((a, h) => a + h.length, 0)
+    const score = Object.values(s.score).reduce((a, n) => a + n, 0)
+    return `${s.phase}:${s.turn}:c${cards}:s${score}`
+  }
+
   // ── discard ──────────────────────────────────────────────────────────
 
   private handleDiscard(g: GlassesGesture): void {

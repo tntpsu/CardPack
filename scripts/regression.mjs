@@ -123,6 +123,21 @@ async function latestFocus() {
   return null
 }
 
+/** Every `progress=<token>` emitted so far, oldest first.
+ *
+ *  Comparing only the first and last token is not enough: a game can cycle
+ *  back to an identical token (Gin Rummy's draw → discard → draw returns to
+ *  the same phase/turn/card-count) and look stationary despite a full round
+ *  of play. The whole history is needed to see the movement in between. */
+async function progressHistory() {
+  const out = []
+  for (const m of stateMessages(await consoleEntries())) {
+    const hit = /progress=(\S+)/.exec(m)
+    if (hit) out.push(hit[1])
+  }
+  return out
+}
+
 async function realErrors() {
   const entries = await consoleEntries()
   return entries.filter(e =>
@@ -208,10 +223,24 @@ async function runGame(game) {
 
     // 3. Drive the game's core gestures.
     if (game.preWaitMs) await sleep(game.preWaitMs) // let AI bids/plays settle
+    const historyAtEntry = await progressHistory()
+    const entryToken = historyAtEntry[historyAtEntry.length - 1] ?? null
     for (const g of game.gestures) {
       try { await input(g) } catch { /* tolerate rate-limit */ }
       await sleep(350)
     }
+
+    // 3b. Gameplay must have ADVANCED, not merely rendered. progress= moves
+    // when a bid is taken, a card changes hands, or a score is credited — and
+    // stays put when the cursor merely slides, which a screenshot diff can't
+    // tell apart. Without this, a game whose input handler silently no-ops
+    // still passes every other check in this file.
+    const fresh = (await progressHistory()).slice(historyAtEntry.length)
+    const advanced = entryToken !== null && fresh.some(t => t !== entryToken)
+    check(`${game.id}: gameplay advanced during play (progress= moved)`, advanced,
+      fresh.length
+        ? `${entryToken ?? 'none'} → ${fresh[fresh.length - 1]} (${fresh.length} steps)`
+        : `stuck at ${entryToken ?? 'none'}`)
 
     // 4. Survived: no errors, still rendering, render changed from launcher.
     const errs = await realErrors()

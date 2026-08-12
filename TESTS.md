@@ -193,6 +193,7 @@ Columns dropped as n/a:
 | Crazy Eights self-play: 12 seeded games terminate; a won hand means the winner shed everything; penalties only ever add | unit:crazy8:selfplay | n/a | n/a | unit:crazy8:selfplay (AI drives all four seats) | n/a |
 | Crazy Eights livelock: drawCard recycles the discard into the stock, so a hand can circulate 52 cards forever and never end — seed 84, 1 of the first 200 seeds | unit:crazy8:selfplay:seed84 (`it.fails`, tracked) | n/a | n/a | n/a | **OPEN DEFECT — no crash, just no progress** |
 | Gin Rummy self-play: 15 seeded games terminate; a wash scores 0 and stalls nothing; each scoring hand credits exactly one player | unit:ginrummy:selfplay | n/a | n/a | unit:ginrummy:selfplay (AI drives both seats) | n/a |
+| Every game advances under its e2e gesture flow — `progress=<phase>:<turn>:c<cards>:s<score>` must move, so an input handler that silently no-ops can no longer pass on "render changed + no errors" alone | e2e:*:advanced (all 8 games) | n/a | n/a | n/a | n/a |
 | Oh Hell self-play: 15 seeded games reach round 7; the dealer hook never lets bids total the trick count; exact bid pays 10+bid and nothing otherwise | unit:ohhell:selfplay | n/a | n/a | unit:ohhell:selfplay (AI drives all four seats) | n/a |
 | Eight-game launcher: …+ Bridge launchable | e2e:* (each navigated via focus= marker and launched) | n/a | n/a | n/a | n/a |
 | Three-game launcher: Hearts + Euchre + Spades registered | manual:hw (launcher logic in platform; integration check on real glasses) | n/a | n/a | n/a | n/a |

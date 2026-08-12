@@ -90,7 +90,7 @@ async function bootstrap(): Promise<void> {
 
   // State-log emission for the regression harness. Format:
   //   [cardpack:state] view=launcher focus=hearts
-  //   [cardpack:state] view=hearts
+  //   [cardpack:state] view=hearts progress=play:W:c39:s0
   // In the launcher we append `focus=<cursored game id>` so the e2e can
   // swipe the cursor to a target game deterministically (regardless of the
   // persisted last-played start position) before launching it. In a game,
@@ -98,8 +98,9 @@ async function bootstrap(): Promise<void> {
   let lastState = ''
   function emitState(): void {
     const inGame = runtime.currentGameId()
+    const progress = runtime.currentProgressLabel()
     const next = inGame
-      ? `view=${inGame}`
+      ? `view=${inGame}${progress ? ` progress=${progress}` : ''}`
       : `view=launcher focus=${runtime.focusedGameId() ?? 'none'}`
     if (next === lastState) return
     lastState = next
