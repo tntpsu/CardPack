@@ -12,11 +12,13 @@
     "hub:upload": "cd ../Cue && node scripts/upload-dev.mjs --manifest ../CardPack/app.json",
     "test": "vitest run",
     "test:e2e": "node scripts/regression.mjs",
-    "smoke": "npm run lint:app-json && tsc --noEmit && vitest run --reporter=dot"
+    "smoke": "npm run lint:app-json && tsc --noEmit && vitest run --reporter=dot",
+    "test:webkit": "node scripts/test-webkit.mjs"
   },
   "devDependencies": {
     "@evenrealities/evenhub-cli": "^0.1.13",
     "@evenrealities/evenhub-simulator": "^0.7.3",
+    "playwright": "^1.62.1",
     "typescript": "^5.9.3",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"

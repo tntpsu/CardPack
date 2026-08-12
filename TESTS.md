@@ -333,7 +333,15 @@ Columns dropped as n/a:
 - TS strict ✓
 - SDK pinned: `@evenrealities/even_hub_sdk@0.0.12` (exact — a caret on a
   `0.0.x` version pins anyway, so the range was never granting flexibility)
-- iOS WKWebView vs Android: not tested
+- iOS WKWebView: `npm run test:webkit` — Playwright/WebKit (the engine family
+  WKWebView is built on) at 320 / 390 / 430 px. Asserts no horizontal overflow,
+  the `<select>` stays inside the viewport, `<main>` keeps `overflow-x: hidden`,
+  and the `<select>` keeps `max-width: 100%` + `border-box`. These are the two
+  scaffold bugs that got Euchre v0.3.0 and Hearts v0.1.5 rejected, so they're
+  asserted directly rather than inferred from the overflow check. 19 checks
+  green. Manual trigger — not in `npm test` (needs `npm run dev` + a browser).
+- Android WebView: still not tested (no harness; Chromium-family, and the known
+  rejection bugs are WebKit intrinsic-sizing issues)
 - Min app version: 2.0.0; min SDK: 0.0.10 (in app.json)
 
 ### Migration
