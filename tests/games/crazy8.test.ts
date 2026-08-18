@@ -6,6 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GameStorage, PlatformContext } from 'even-card-platform'
+import { composeGlassesFrame } from 'even-card-platform'
 import { crazy8Game } from '../../src/games/crazy8'
 import {
   cardPenalty, drawCard, gameWinner, handPenalty, legalPlays, newGame, playCard,
@@ -121,9 +122,11 @@ describe('crazy8Game — rendering + play', () => {
       },
     }))
     const body = h.render().body.join('\n')
-    expect(body).toContain('W:3')
-    expect(body).toContain('N:1')
-    expect(body).toContain('E:2')
+    // Counts now sit alongside each seat's last action on one line — knowing
+    // someone is down to 1 is still the key signal.
+    expect(body).toContain('W ·(3)')
+    expect(body).toContain('N ·(1)')
+    expect(body).toContain('E ·(2)')
     h.destroy()
   })
 
@@ -194,6 +197,45 @@ describe('crazy8Game — rendering + play', () => {
     expect(st.currentSuit).toBe('♥')
     expect(st.discard[st.discard.length - 1]).toEqual({ suit: '♦', rank: '8' })
     expect(get<Card | null>(h, 'suitPickCard')).toBeNull()
+    h.destroy()
+  })
+
+  // STYLE.md § 1.1 budgets 8-10 lines. The launcher blew this and the firmware
+  // clipped its control hint with no way to scroll to it. The play view is the
+  // next-widest surface — a hand grows without bound as you draw — so it gets
+  // the same guard rather than waiting to be discovered on hardware.
+  const MAX_COMPOSED_LINES = 10
+
+  it('play view stays inside the line budget even with a big hand', () => {
+    const big: Card[] = [
+      { suit: '♠', rank: '2' }, { suit: '♠', rank: '5' }, { suit: '♠', rank: '9' },
+      { suit: '♥', rank: '3' }, { suit: '♥', rank: '7' }, { suit: '♥', rank: 'K' },
+      { suit: '♦', rank: '4' }, { suit: '♦', rank: '8' }, { suit: '♦', rank: 'Q' },
+      { suit: '♣', rank: '6' }, { suit: '♣', rank: '10' }, { suit: '♣', rank: 'J' },
+      { suit: '♣', rank: 'A' },
+    ]
+    const h = crazy8Game.init(makeCtx())
+    set(h, 'state', humanPlayState({
+      hands: { S: big, W: [{ suit: '♣', rank: '3' }], N: [{ suit: '♦', rank: '4' }], E: [{ suit: '♠', rank: '5' }] },
+    }))
+    const composed = composeGlassesFrame({ gameName: 'Crazy Eights', frame: h.render() })
+    expect(composed.split('\n').length,
+      `play view overflows:\n${composed}`).toBeLessThanOrEqual(MAX_COMPOSED_LINES)
+    h.destroy()
+  })
+
+  it('opponent line carries both cards-left and what each seat just did', () => {
+    const h = crazy8Game.init(makeCtx())
+    set(h, 'state', humanPlayState({
+      hands: { S: [{ suit: '♠', rank: '2' }], W: [{ suit: '♣', rank: '3' }], N: [{ suit: '♦', rank: '4' }], E: [{ suit: '♠', rank: '5' }] },
+    }))
+    // Before anyone has moved, the slot is a placeholder rather than blank.
+    expect(h.render().body.join('\n')).toContain('W ·(1)')
+    set(h, 'lastAction', { S: null, W: '7♠', N: 'pass', E: 'K♠' })
+    const body = h.render().body.join('\n')
+    expect(body).toContain('W 7♠(1)')
+    expect(body).toContain('N pass(1)')
+    expect(body).toContain('E K♠(1)')
     h.destroy()
   })
 

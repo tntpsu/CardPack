@@ -52,6 +52,14 @@ class Crazy8Handle implements GameHandle {
   private suitCursor = 0
   /** Consecutive passes; 4 in a row = deadlock → resolve the hand. */
   private passesInARow = 0
+  /** What each seat did on its most recent turn, for the status line.
+   *
+   *  Crazy Eights has no trick layout to hold the played cards on screen the
+   *  way Euchre and Bridge do — only the top of the discard, which three AI
+   *  turns rewrite in about two seconds. Without this you cannot tell what
+   *  anyone played. Showing it beats slowing the game down: the information
+   *  is what's missing, not the time. */
+  private lastAction: Record<Position, string | null> = { S: null, W: null, N: null, E: null }
   private pendingTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(ctx: PlatformContext) {
@@ -83,6 +91,7 @@ class Crazy8Handle implements GameHandle {
         this.cursor = 0
         this.suitPickCard = null
         this.passesInARow = 0
+        this.lastAction = { S: null, W: null, N: null, E: null }
         this.clampCursor()
         this.ctx.requestRender()
         this.scheduleNextStep()
@@ -224,6 +233,7 @@ class Crazy8Handle implements GameHandle {
 
   private commitPlay(card: Card, declaredSuit?: Suit): void {
     this.state = playCard(this.state, HUMAN, card, declaredSuit)
+    this.lastAction[HUMAN] = renderCard(card)
     this.passesInARow = 0
     this.clampCursor()
     this.ctx.requestRender()
@@ -232,6 +242,7 @@ class Crazy8Handle implements GameHandle {
 
   private doPass(pos: Position): void {
     this.state = passTurn(this.state, pos)
+    this.lastAction[pos] = 'pass'
     this.passesInARow += 1
     if (this.passesInARow >= 4) {
       this.state = endStuckHand(this.state)
@@ -261,16 +272,21 @@ class Crazy8Handle implements GameHandle {
 
     // Draw until the AI can play (bounded; the deck is finite).
     let guard = 0
+    let drewAny = false
     while (!canPlay(this.state, pos) && guard < 60) {
       const { state, drew } = drawCard(this.state, pos)
       if (drew === null) { this.doPass(pos); return }
       this.state = state
+      drewAny = true
       guard++
     }
     if (!canPlay(this.state, pos)) { this.doPass(pos); return }
 
     const { card, declaredSuit } = aiChooseCard(this.state, pos, this.difficulty)
     this.state = playCard(this.state, pos, card, declaredSuit)
+    // A draw before the play is worth showing — it says the seat was stuck,
+    // which is the tell that they are holding cards you can strand them on.
+    this.lastAction[pos] = drewAny ? `+${renderCard(card)}` : renderCard(card)
     this.passesInARow = 0
     this.clampCursor()
     this.ctx.requestRender()
@@ -296,7 +312,14 @@ class Crazy8Handle implements GameHandle {
     const topLine = `Top ${renderCard(top)} →${SUIT_GLYPH[s.currentSuit]}   stock ${s.stock.length}`
     // Public info: how many cards each opponent holds. Knowing someone is down
     // to 1 is the key signal — switch suit with an 8, shed your high cards.
-    const oppLine = `Left  W:${s.hands.W.length}  N:${s.hands.N.length}  E:${s.hands.E.length}`
+    // Cards-left AND what they just did, on ONE line. Card counts are the key
+    // signal (someone on 1 is about to go out); the last action tells you what
+    // they played, which the mutating top card cannot. This deliberately does
+    // not become a second line — the play view already runs to 10 composed
+    // lines with a big hand, which is the budget that clipped the launcher.
+    const oppLine = (['W', 'N', 'E'] as const)
+      .map(p => `${p} ${this.lastAction[p] ?? '·'}(${s.hands[p].length})`)
+      .join('  ')
     const statusLine = yourTurn
       ? (stuck ? 'No legal card — [2x] draw' : 'Your turn')
       : `${SEAT_LABEL[s.turn]} playing…`
