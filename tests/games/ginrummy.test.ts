@@ -6,6 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GameStorage, PlatformContext } from 'even-card-platform'
+import { composeGlassesFrame } from 'even-card-platform'
 import { ginRummyGame } from '../../src/games/ginrummy'
 import {
   bestMeldSplit, canKnock, deadwoodCount, deadwoodValue, discard, drawDiscard,
@@ -75,6 +76,41 @@ function discardPhase(over: Partial<GameState>): GameState {
 }
 
 // ── engine: meld solver ────────────────────────────────────────────────
+
+describe('ginrummy — opponent visibility + frame budget', () => {
+  // Whether the opponent drew blind or TOOK YOUR DISCARD is the most valuable
+  // read in Gin, and nothing on screen carried it: the discard top shows what
+  // they threw, never where they drew from.
+  it('draw view reports what the opponent did last turn', () => {
+    const h = ginRummyGame.init(makeCtx())
+    set(h, 'state', discardPhase({
+      hands: { S: HAND_DW4, N: HAND_DW58 },
+      phase: 'draw',
+      turn: 'S',
+    }))
+    // Nothing to report before the opponent has moved.
+    expect(h.render().body.join('\n')).not.toContain('Opp ')
+    set(h, 'oppLastTurn', 'took 9♥ · threw K◆')
+    expect(h.render().body.join('\n')).toContain('Opp took 9♥ · threw K◆')
+    h.destroy()
+  })
+
+  // STYLE.md § 1.1 budgets 8-10 lines; overflowing it clipped the launcher's
+  // control hint on real glasses with no way to scroll to it. The draw view
+  // grew a line here, so it gets the guard.
+  it('draw view stays inside the line budget with the opponent line shown', () => {
+    const h = ginRummyGame.init(makeCtx())
+    set(h, 'state', discardPhase({
+      hands: { S: [...HAND_DW4, C('2', '♦')], N: HAND_DW58 },
+      phase: 'draw',
+      turn: 'S',
+    }))
+    set(h, 'oppLastTurn', 'took 10♦ · threw Q♠')
+    const composed = composeGlassesFrame({ gameName: 'Gin Rummy', frame: h.render() })
+    expect(composed.split('\n').length, `overflows:\n${composed}`).toBeLessThanOrEqual(10)
+    h.destroy()
+  })
+})
 
 describe('ginrummy engine — meld solver', () => {
   it('deadwoodValue: A=1, face=10, pip=number', () => {

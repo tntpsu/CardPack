@@ -235,7 +235,23 @@ async function runGame(game) {
     // stays put when the cursor merely slides, which a screenshot diff can't
     // tell apart. Without this, a game whose input handler silently no-ops
     // still passes every other check in this file.
-    const fresh = (await progressHistory()).slice(historyAtEntry.length)
+    let fresh = (await progressHistory()).slice(historyAtEntry.length)
+    // The scripted gestures above assume the cursor lands on a playable card,
+    // which is deal-dependent: Hearts must open with 2♣, so if South holds it
+    // and the cursor is elsewhere, every double-tap correctly no-ops and the
+    // script never advances. Rather than encode a per-deal gesture list, hunt
+    // for a legal move by stepping the cursor. This keeps the assertion honest
+    // — a game that cannot advance at all still fails — while tolerating the
+    // deal variance the fixed script cannot see.
+    for (let i = 0; i < 20 && !fresh.some(t => t !== entryToken); i++) {
+      try { await input('double_click') } catch { /* tolerate */ }
+      await sleep(250)
+      fresh = (await progressHistory()).slice(historyAtEntry.length)
+      if (fresh.some(t => t !== entryToken)) break
+      try { await input('down') } catch { /* tolerate */ }
+      await sleep(250)
+      fresh = (await progressHistory()).slice(historyAtEntry.length)
+    }
     const advanced = entryToken !== null && fresh.some(t => t !== entryToken)
     check(`${game.id}: gameplay advanced during play (progress= moved)`, advanced,
       fresh.length

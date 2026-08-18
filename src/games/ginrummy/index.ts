@@ -42,6 +42,13 @@ class GinRummyHandle implements GameHandle {
   private difficulty: Difficulty
   private ctx: PlatformContext
   private pendingTimer: ReturnType<typeof setTimeout> | null = null
+  /** What the opponent did on their last turn, for the draw view.
+   *
+   *  Whether they drew blind from the stock or TOOK YOUR DISCARD is the most
+   *  valuable read in the game — taking tells you what they are collecting, so
+   *  you stop feeding it. Nothing on screen carried that: the discard top shows
+   *  what they threw, never where they drew from. */
+  private oppLastTurn: string | null = null
 
   constructor(ctx: PlatformContext) {
     this.ctx = ctx
@@ -70,6 +77,7 @@ class GinRummyHandle implements GameHandle {
         this.cancelPendingTimer()
         this.state = startNewHand(s)
         this.cursor = 0
+        this.oppLastTurn = null
         this.ctx.requestRender()
       }
       return
@@ -183,10 +191,11 @@ class GinRummyHandle implements GameHandle {
     if (pos === HUMAN) return
     if (this.state.phase !== 'draw') return
 
-    // Draw.
-    this.state = aiDrawFromDiscard(this.state, pos, this.difficulty)
-      ? drawDiscard(this.state, pos)
-      : drawStock(this.state, pos)
+    // Draw. Capture the upcard BEFORE it is taken, so we can name it.
+    const upcard = topDiscard(this.state)
+    const tookDiscard = aiDrawFromDiscard(this.state, pos, this.difficulty)
+    this.state = tookDiscard ? drawDiscard(this.state, pos) : drawStock(this.state, pos)
+    const drewPart = tookDiscard && upcard ? `took ${renderCard(upcard)}` : 'drew'
     if (this.state.phase === 'hand-end' || this.state.phase === 'game-end') {
       this.ctx.requestRender()
       return // stock exhausted → wash
@@ -196,8 +205,10 @@ class GinRummyHandle implements GameHandle {
     const choice = aiDiscardChoice(this.state.hands[pos], this.difficulty)
     if (choice.knock && canKnock(this.state.hands[pos].filter(c => !(c.suit === choice.card.suit && c.rank === choice.card.rank)))) {
       this.state = knock(this.state, pos, choice.card)
+      this.oppLastTurn = `${drewPart}, knocked`
     } else {
       this.state = discard(this.state, pos, choice.card)
+      this.oppLastTurn = `${drewPart} · threw ${renderCard(choice.card)}`
     }
     this.cursor = 0
     this.ctx.requestRender()
@@ -220,6 +231,7 @@ class GinRummyHandle implements GameHandle {
     return {
       score: this.scoreString(),
       body: [
+        ...(this.oppLastTurn ? [`Opp ${this.oppLastTurn}`] : []),
         `${selectionPrefix(this.cursor === 0)} Draw stock (${s.stock.length})`,
         `${selectionPrefix(this.cursor === 1)} Take ${top ? renderCard(top) : '—'}`,
         ...renderHand({ hand: sorted as readonly PlatformCard[], cursorIdx: -1 }),
