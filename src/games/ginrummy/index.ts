@@ -11,7 +11,7 @@
 import type {
   Game, GameHandle, GlassesFrame, GlassesGesture, PhoneEvent, PlatformContext,
 } from 'even-card-platform'
-import { renderCard, renderHand, sortBySuit } from 'even-card-platform'
+import { renderCard, renderHand, sortBySuit, selectionPrefix } from 'even-card-platform'
 import type { Card as PlatformCard } from 'even-card-platform'
 
 import { aiDiscardChoice, aiDrawFromDiscard, bestDiscard, DEFAULT_DIFFICULTY } from './ai'
@@ -220,8 +220,8 @@ class GinRummyHandle implements GameHandle {
     return {
       score: this.scoreString(),
       body: [
-        `${this.cursor === 0 ? '▶' : ' '} Draw stock (${s.stock.length})`,
-        `${this.cursor === 1 ? '▶' : ' '} Take ${top ? renderCard(top) : '—'}`,
+        `${selectionPrefix(this.cursor === 0)} Draw stock (${s.stock.length})`,
+        `${selectionPrefix(this.cursor === 1)} Take ${top ? renderCard(top) : '—'}`,
         ...renderHand({ hand: sorted as readonly PlatformCard[], cursorIdx: -1 }),
       ],
       controlHint: '[swipe] choose  [2x] draw',

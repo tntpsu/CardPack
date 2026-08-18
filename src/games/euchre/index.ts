@@ -26,6 +26,7 @@ import type {
 import {
   renderCard as platformRenderCard,
   renderHand, renderPlusBid, renderPlusTrick, sortBySuit, SUIT_GLYPH,
+  selectionPrefix,
 } from 'even-card-platform'
 import type { Card as PlatformCard } from 'even-card-platform'
 
@@ -199,8 +200,8 @@ class EuchreHandle implements GameHandle {
 
     // Human's turn — Order / Pass toggle below the plus-sign.
     const role = s.dealer === HUMAN ? 'you are dealer — pick up' : 'tell dealer to'
-    const orderLabel = this.cursor === 0 ? '▶Order' : ' Order'
-    const passLabel = this.cursor === 1 ? '▶Pass' : ' Pass'
+    const orderLabel = `${selectionPrefix(this.cursor === 0)}Order`
+    const passLabel = `${selectionPrefix(this.cursor === 1)}Pass`
     return {
       score: this.scoreString(),
       body: [
@@ -242,7 +243,7 @@ class EuchreHandle implements GameHandle {
     const cursor = ((this.cursor % options.length) + options.length) % options.length
     const labels = options.map((opt, i) => {
       const text = opt.kind === 'suit' ? SUIT_GLYPH[opt.suit] : 'Pass'
-      return i === cursor ? `▶${text}` : ` ${text}`
+      return `${selectionPrefix(i === cursor)}${text}`
     })
     return {
       score: this.scoreString(),

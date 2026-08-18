@@ -15,7 +15,7 @@
 import type {
   Game, GameHandle, GlassesFrame, GlassesGesture, PhoneEvent, PlatformContext,
 } from 'even-card-platform'
-import { renderCard, renderHand, sortBySuit, SUIT_GLYPH } from 'even-card-platform'
+import { renderCard, renderHand, sortBySuit, SUIT_GLYPH, selectionPrefix } from 'even-card-platform'
 import type { Card as PlatformCard } from 'even-card-platform'
 
 import { aiChooseCard, DEFAULT_DIFFICULTY } from './ai'
@@ -320,13 +320,23 @@ class Crazy8Handle implements GameHandle {
 
   private renderSuitPick(): GlassesFrame {
     const row = SUIT_LIST
-      .map((suit, i) => `${i === this.suitCursor ? '▶' : ' '}${SUIT_GLYPH[suit]}`)
+      .map((suit, i) => `${selectionPrefix(i === this.suitCursor)}${SUIT_GLYPH[suit]}`)
       .join('  ')
+    // Show the hand you are choosing FOR. Naming a suit is a decision about the
+    // cards you still hold — you want the suit you are longest in — and this
+    // view used to hide them, so the choice was made blind. cursorIdx -1
+    // because the cursor is on the suit row, not on a card.
+    const sorted = this.sortedHand()
     return {
       score: this.scoreString(),
       body: [
         'Played an 8 — name the suit:',
         row,
+        ...renderHand({
+          hand: sorted as readonly PlatformCard[],
+          cursorIdx: -1,
+          legal: sorted as readonly PlatformCard[],
+        }),
       ],
       controlHint: '[swipe] suit  [2x] choose',
     }

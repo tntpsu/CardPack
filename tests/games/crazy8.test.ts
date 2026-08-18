@@ -197,6 +197,36 @@ describe('crazy8Game — rendering + play', () => {
     h.destroy()
   })
 
+  it('suit picker shows the hand you are choosing for', () => {
+    // Reported from real glasses: after playing an 8 the picker showed only the
+    // four suit glyphs. Naming a suit is a decision about the cards you still
+    // hold — you want the one you are longest in — so choosing blind is the
+    // whole problem.
+    const h = crazy8Game.init(makeCtx())
+    set(h, 'state', humanPlayState({
+      hands: {
+        S: [
+          { suit: '♦', rank: '8' },
+          { suit: '♥', rank: 'K' },
+          { suit: '♥', rank: '9' },
+          { suit: '♣', rank: '2' },
+        ],
+        W: [{ suit: '♣', rank: '3' }], N: [{ suit: '♦', rank: '4' }], E: [{ suit: '♠', rank: '5' }],
+      },
+    }))
+    // The cursor indexes the SORTED hand, so find where the 8 actually sits.
+    const sorted = (h as unknown as { sortedHand(): Card[] }).sortedHand()
+    set(h, 'cursor', sorted.findIndex(c => c.rank === '8'))
+    h.handleGlassesInput({ kind: 'double-tap' })   // play the 8 → suit picker
+    const body = h.render().body.join('\n')
+    expect(body).toContain('name the suit')
+    // The three cards still in hand must all be visible.
+    expect(body).toContain('K')
+    expect(body).toContain('9')
+    expect(body).toContain('2')
+    h.destroy()
+  })
+
   it('no legal card → "must draw" view; double-tap draws from stock', () => {
     const h = crazy8Game.init(makeCtx())
     set(h, 'state', humanPlayState({
