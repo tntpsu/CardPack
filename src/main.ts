@@ -4,7 +4,7 @@
 // Registered: Hearts, Euchre, Spades, Crazy Eights, Gin Rummy, Cribbage,
 // Oh Hell, Bridge. Solitaire ships standalone (image-rendered — see ROADMAP).
 
-import { Runtime } from 'even-card-platform'
+import { Runtime, PLATFORM_MENU_ITEMS } from 'even-card-platform'
 import type { GlassesGesture } from 'even-card-platform'
 
 import { connectEvenRuntime, type EvenRuntime } from './even'
@@ -79,7 +79,9 @@ difficultySelect.value = initialDifficulty
 
 async function bootstrap(): Promise<void> {
   const initial = 'CARD PACK\nLoading…'
-  const even = await connectEvenRuntime(initial)
+  // Declare the glasses contextual menu (tap-and-hold). The runtime owns the
+  // entries so both packs get the same command surface; see Runtime.menuItems.
+  const even = await connectEvenRuntime(initial, PLATFORM_MENU_ITEMS)
 
   // Adapter: wrap EvenRuntime's storage methods to match the platform's
   // BridgeStorageRuntime contract (getStorage returns string|null).
@@ -157,6 +159,14 @@ async function bootstrap(): Promise<void> {
       runtime.handleGesture({ kind: dir === 'up' ? 'swipe-up' : 'swipe-down' })
     })
     even.onForeground(() => { runtime.render() })
+    // Contextual-menu selection. Unknown ids are logged rather than ignored —
+    // a silent no-op here looks identical to a firmware problem.
+    even.onMenuSelect(itemID => {
+      if (!runtime.handleMenuSelect(itemID)) {
+        // eslint-disable-next-line no-console
+        console.error(`[card-pack] unknown menu item ${itemID}`)
+      }
+    })
   }
 
   // Phone-side buttons.
