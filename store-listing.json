@@ -1,15 +1,26 @@
 {
   "name": "Card Pack",
-  "tagline": "Seven classic card games. Hands-free on G2.",
+  "tagline": "Eight classic card games. Hands-free on G2.",
   "category": "Entertainment",
-  "description": "Seven classic card games on your G2 smart glasses. Everything happens on the lenses — your hand, the trick in front of you, the score, all visible without picking up your phone.\n\nTrick-taking trio: Hearts (avoid hearts and the Queen of Spades), Spades (bid and bury), Euchre (right and left bowers, partner across the table).\n\nPatience: Klondike Solitaire — stock, foundations, tableaus, the classic.\n\nTwo-player strategy: Cribbage (pegging, your fifteens, his nibs) and Gin Rummy (sets, runs, knock when you're under ten).\n\nShedding: Crazy Eights — match by rank or suit, eights are wild, first to empty their hand wins.\n\nOne unified launcher: swipe up/down to choose, tap to start. Every game obeys the same gesture grammar so muscle memory transfers — swipe to navigate the cursor, tap to play, double-tap to advance through end-of-hand and end-of-game screens. The phone view mirrors the glasses display and provides per-game settings (difficulty, target score) plus a New game / Back to menu button for when you want to bail out between hands.\n\nThree difficulty tiers across every game where it makes sense (Easy / Medium / Hard), so the same app grows with you.\n\nHands-free. No microphone. No internet required. AI plays at full speed when it's not your turn.",
-  "tags": ["card-games", "hearts", "solitaire", "cribbage", "trick-taking"],
+  "description": "Eight classic card games on your G2 smart glasses. Everything happens on the lenses: your hand, the trick in front of you, the score, all visible without picking up your phone.\n\nTrick-taking: Hearts (avoid hearts and the Queen of Spades), Spades (bid your tricks, spades are trump, nil and bags), Euchre (right and left bowers, partner across the table), Oh Hell (bid the exact number of tricks you will take as the hand size grows), and Bridge (a real auction, then play with a revealed dummy, duplicate-style scoring to 500).\n\nTwo-player: Gin Rummy (build sets and runs, knock under ten) and Cribbage (peg to 121 with fifteens, runs, and the crib).\n\nShedding: Crazy Eights (match rank or suit, eights are wild, first to empty their hand wins).\n\nOne launcher, one gesture grammar: swipe up or down to choose, tap to play, double-tap to advance through end-of-hand and end-of-game screens. Tap and hold opens a menu on the glasses with Back to menu and New game (firmware 2.2.9 or newer; on older firmware the app runs the same without the menu). The phone view mirrors the glasses and holds the AI difficulty selector (Easy, Medium, Hard), New game and End game buttons, and a How to play panel that follows whichever game the cursor is on.\n\nHands-free. No microphone. No internet required. The AI plays at full speed when it is not your turn.",
+  "tags": [
+    "card-games",
+    "hearts",
+    "bridge",
+    "cribbage",
+    "trick-taking"
+  ],
   "icon_text": "CP",
   "screenshots": [
     "store-assets/01-launcher.png",
-    "store-assets/02-mid-trick.png",
-    "store-assets/03-hand-end.png",
-    "store-assets/04-game-end.png"
+    "store-assets/02-hearts.png",
+    "store-assets/03-euchre.png",
+    "store-assets/04-spades.png",
+    "store-assets/05-crazy8.png",
+    "store-assets/06-ginrummy.png",
+    "store-assets/07-cribbage.png",
+    "store-assets/08-ohhell.png",
+    "store-assets/09-bridge.png"
   ],
   "cover_screenshot_index": 1,
   "cover_environment": "Home",
@@ -18,7 +29,7 @@
     "location": false,
     "push_notifications": false,
     "local_network": false,
-    "bluetooth": true,
+    "bluetooth": false,
     "background_services": false,
     "other": []
   },

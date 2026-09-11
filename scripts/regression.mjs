@@ -55,6 +55,14 @@ async function ping() {
 }
 
 async function spawnSim() {
+  // Refuse to adopt a simulator someone else started. The readiness loop
+  // below pings the port, so a pre-launched sim would be silently reused with
+  // the previous game still on screen; every launcher check after the first
+  // game then fails while the gameplay checks pass, which reads as a product
+  // bug. Each game needs its own fresh process.
+  if (await ping()) {
+    throw new Error(`a simulator is already listening on ${PORT}; stop it (pkill -f evenhub-simulator) - this script spawns its own per game`)
+  }
   const child = spawn(SIM_BIN, ['--automation-port', String(PORT), DEV_URL], {
     stdio: 'ignore',
     detached: false,
@@ -285,6 +293,12 @@ async function runGame(game) {
 }
 
 async function main() {
+  // Abort before any game runs: the readiness loop would otherwise adopt a
+  // pre-launched simulator with stale state (see spawnSim).
+  if (await ping()) {
+    console.error(`✗ a simulator is already listening on ${PORT}; stop it (pkill -f evenhub-simulator) - this script spawns its own per game`)
+    process.exit(2)
+  }
   console.log('Card Pack regression — full per-game e2e')
   console.log('========================================')
 

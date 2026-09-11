@@ -49,7 +49,10 @@ const GAMES = [
   { id: 'hearts', gestures: ['down', 'down', 'up', 'double_click', 'down', 'double_click'] },
   { id: 'euchre', gestures: ['down', 'double_click', 'up', 'double_click', 'down', 'double_click'] },
   { id: 'spades', preWaitMs: 2800, gestures: ['up', 'up', 'double_click', 'down', 'double_click', 'down', 'double_click'] },
-  { id: 'crazy8', preWaitMs: 1500, gestures: ['down', 'double_click', 'down', 'double_click', 'double_click'] },
+  // Trailing pause: the last double_click is the human's play, after which
+  // three AI turns run on timers. Without it the shot lands on "North
+  // playing..." with no control hint, which reads as a broken screen.
+  { id: 'crazy8', preWaitMs: 1500, gestures: ['down', 'double_click', 'down', 'double_click', 'double_click', 3500] },
   { id: 'ginrummy', gestures: ['double_click', 'down', 'down', 'double_click', 'down', 'double_click'] },
   { id: 'cribbage', gestures: ['double_click', 'down', 'double_click', 'down', 'down', 'down', 'down', 'down', 'double_click', 'double_click', 'down', 'double_click'] },
   // Play rounds 1 and 2 out so the shot lands in round 3 (three cards each)
@@ -76,6 +79,11 @@ async function ping() {
 }
 
 async function spawnSim() {
+  // Same rule as regression.mjs: a pre-launched simulator would be adopted
+  // with stale state and the shots would show the wrong game.
+  if (await fetch(`${SIM_BASE}/api/ping`).then(r => r.ok).catch(() => false)) {
+    throw new Error(`a simulator is already listening on ${PORT}; stop it (pkill -f evenhub-simulator) - this script spawns its own per game`)
+  }
   const child = spawn(SIM_BIN, ['--automation-port', String(PORT), DEV_URL], { stdio: 'ignore' })
   const started = Date.now()
   while (Date.now() - started < 20_000) {
@@ -191,6 +199,12 @@ async function captureGame(game) {
 }
 
 async function main() {
+  // Abort before any game runs: the readiness loop would otherwise adopt a
+  // pre-launched simulator with stale state (see spawnSim).
+  if (await fetch(`${SIM_BASE}/api/ping`).then(r => r.ok).catch(() => false)) {
+    console.error(`✗ a simulator is already listening on ${PORT}; stop it (pkill -f evenhub-simulator) - this script spawns its own per game`)
+    process.exit(2)
+  }
   await mkdir(OUT_DIR, { recursive: true })
   const written = []
   const problems = []

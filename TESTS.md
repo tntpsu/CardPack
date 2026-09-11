@@ -1,6 +1,6 @@
 # TESTS — coverage matrix
 
-Last updated: 2026-06-10 (v0.4.0 — Bridge added; 284 unit + 72 e2e)
+Last updated: 2026-09-11 (v0.4.3 — glasses menu, Gin Rummy last turn, Crazy Eights opponent plays; 383 unit + 80 e2e)
 
 This is the build gate for Card Pack. Every feature gets a row, every cell
 gets either a test reference, `manual:<reason>`, or `skip:<reason>`. Empty
@@ -141,6 +141,7 @@ Columns dropped as n/a:
 | Gin Rummy: discard passes to opponent; AI turn on timer | unit:gin:discard-passes-ai | n/a | n/a | n/a | n/a |
 | Gin Rummy: KNOCK item ends the hand | unit:gin:knock-item | n/a | n/a | n/a | n/a |
 | Gin Rummy: single-tap mid-turn no-op | unit:gin:single-tap-noop | n/a | n/a | n/a | n/a |
+| Gin Rummy: opponent's last turn shown on the glasses (where they drew from + what they discarded) so an AI turn on a timer is not invisible | unit:gin:last-turn | n/a | n/a | n/a | n/a |
 | Gin Rummy: hand-end render + double-tap → next hand | unit:gin:hand-end | n/a | n/a | n/a | n/a |
 | Gin Rummy: game-end YOU/OPPONENT WINS + double-tap exits | unit:gin:game-end | n/a | n/a | n/a | n/a |
 | Gin Rummy: phone new-game/set-difficulty/unknown | unit:gin:phone | unit:gin:phone (unknown) | n/a | n/a | n/a |
