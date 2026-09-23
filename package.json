@@ -1,13 +1,13 @@
 {
   "name": "card-pack",
   "private": true,
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "lint:app-json": "node scripts/lint-app-json.mjs",
-    "pack": "node scripts/lint-app-json.mjs && evenhub pack app.json dist -o card-pack.ehpk",
+    "pack": "node scripts/lint-app-json.mjs && evenhub pack app.json dist -o card-pack.ehpk --sdk-ver $(node -p \"require('./node_modules/@evenrealities/even_hub_sdk/package.json').version\")",
     "deploy": "npm run build && npm run pack",
     "hub:upload": "cd ../Cue && node scripts/upload-dev.mjs --manifest ../CardPack/app.json",
     "test": "vitest run",
@@ -16,7 +16,7 @@
     "test:webkit": "node scripts/test-webkit.mjs"
   },
   "devDependencies": {
-    "@evenrealities/evenhub-cli": "^0.1.13",
+    "@evenrealities/evenhub-cli": "^0.1.14",
     "@evenrealities/evenhub-simulator": "^0.9.1",
     "playwright": "^1.62.1",
     "typescript": "^5.9.3",

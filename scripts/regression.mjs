@@ -286,6 +286,28 @@ async function runGame(game) {
       const afterSpam = await glassesShot()
       check(`${game.id}: still rendering after spam`, afterSpam.bytes > 1000, `${afterSpam.bytes} bytes`)
     }
+
+    // 6. Contextual menu (SDK 0.0.14, simulator 0.9.0+). The platform declares
+    // the same two items in every game, so every game proves the whole path:
+    // open -> move to "New game" -> select fires menuItemClickEvent {itemID:2}
+    // and the game handles it; open again -> "Back to menu" returns to the
+    // launcher. Until 2026-09-22 this was believed to be hardware-only.
+    const menuT0 = (await consoleEntries()).length
+    await input('context_menu'); await sleep(600)
+    await input('down'); await sleep(400)
+    await input('click'); await sleep(1200)
+    const fired = (await consoleEntries()).slice(menuT0)
+      .some(e => typeof e.message === 'string' && /menuItemClickEvent.*"itemID":\s*2/.test(e.message))
+    check(`${game.id}: menu "New game" fires menuItemClickEvent itemID 2`, fired)
+    const menuErrs = await realErrors()
+    check(`${game.id}: menu selection raised no console errors`, menuErrs.length === 0,
+      menuErrs.length ? menuErrs[0].message.slice(0, 80) : 'clean')
+    await input('context_menu'); await sleep(600)
+    await input('click'); await sleep(800)
+    let backToMenu = true
+    try { await waitForState(m => m.includes('view=launcher'), { timeoutMs: 4000, label: `${game.id}: back to menu` }) }
+    catch { backToMenu = false }
+    check(`${game.id}: menu "Back to menu" returns to the launcher (view=launcher)`, backToMenu)
   } finally {
     await killSim(child)
     await sleep(500)
